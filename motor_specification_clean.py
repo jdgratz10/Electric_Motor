@@ -1,4 +1,5 @@
 from collections import namedtuple
+from itertools import chain
 import numpy as np 
 import matplotlib.pyplot as plt 
 from openmdao.api import Problem, Group, IndepVarComp, ExplicitComponent
@@ -87,75 +88,92 @@ Motors = (
     ('YASA P400',                       MotorDatum(pwr=60, pwr_max=160, rpm=2250, rpm_max=8000, gr=1, t=255, t_max=370, v=0., w=23.6, eff=1, cost=0), set(('Auto','OutRunner','Radial','LiquidCool','Commercial','YASA'))),
 )
 
-def filter_data(keyword): # This function extracts the motor weight, motor power, and motor name for each motor in the data set whose keywords include the keyword specified
-    keyword = (keyword,)
-    keyword = set(keyword)
+def filter_data(keywords): # This function extracts the motor weight, motor power, and motor name for each motor in the data set whose keywords include the keyword specified
+    keywords = set(keywords)
     x = []
     y = []
     motors = []
+    all_words = Motors[0][2]
+    val = False
     
     for i in Motors:
-        keywords = i[2]
-        if keyword.issubset(keywords):
+        all_words = set(chain(all_words, i[2]))
+        motor_words = i[2]
+        if keywords.issubset(motor_words):
             x.append(i[1].pwr)  
             y.append(i[1].w)  
             motors.append(i[0])
+            val = True
+    if val == False:
+        raise Exception("One or more of your keywords: %s are incompatible or not allowed" %(keywords))
 
     return(x, y, motors)
 
 class Regression(ExplicitComponent): # This component calculates a linear regression and its derivatives for the power and weight of the desired motors.
 
     def initialize(self):
-        self.options.declare("keyword", desc = "keyword to use in component")
+        self.options.declare("keywords", types = list, desc = "keywords to use in component")
 
     def setup(self):
-        data = filter_data(self.options["keyword"])
-        raw_power = data[0]     # powers of the motors
-        raw_weight = data[1]    # actual weights of the motors  
-        self.coefficients = np.polyfit(raw_power, raw_weight, 1)    # coefficients of the linear regression line.  [0] is the slope, and [1] is the y-intercept
+        data = filter_data(self.options["keywords"])
+        self.raw_power = data[0]     # powers of the motors
+        raw_weight = data[1]    # actual weights of the motors
+          
+        self.coefficients = np.polyfit(self.raw_power, raw_weight, 1)    # coefficients of the linear regression line.  [0] is the slope, and [1] is the y-intercept
 
-        self.add_input("power", shape = np.shape(raw_power), units = "kW", desc = "power of the motor") # this is the same data as the method's variable "power", but it was necessary to make it an input in order to calculate derivats wrt it.
-        self.add_output("fitted_weight", shape = np.shape(raw_power), units = "kg", desc = "weight of motor")   #this is the fitted motor weights using the linear regression
+        self.add_input("power", units = "kW", desc = "power of the motor") 
+        self.add_output("fitted_weight", units = "kg", desc = "outputted weight of motor")   #this is the fitted motor weight using the linear regression
+        self.add_output("regression_weights", shape = np.shape(self.raw_power), units = "kg", desc = "corresponding fitted weights for regression plot, no actual bearing on model, but used for visual aid")
 
-        self.declare_partials("fitted_weight", "power", rows = np.arange(0, len(power)), cols = np.arange(0, len(power)))
+        self.declare_partials("fitted_weight", "power", val = self.coefficients[0])
 
     def compute(self, inputs, outputs):
         outputs["fitted_weight"] = np.add(np.multiply(self.coefficients[0], inputs["power"]), self.coefficients[1])
-
-    def compute_partials(self, inputs, J):
-        J["fitted_weight", "power"] = self.coefficients[0]
+        outputs["regression_weights"] = np.add(np.multiply(self.coefficients[0], self.raw_power), self.coefficients[1])
 
 
 if __name__ == "__main__":
     
-    
     # the list below is all the relevant keywords, and can be used to test the model
     # words = ['Aero', 'Auto', 'OutRunner',  'InRunner',  'Dual', 'Axial',      'Radial', 'AirCool',    'LiquidCool', 'Development','Commercial', 'BMW','Brusa','Emrax','Joby','Launchpoint','Magicall','MagniX','Magnax','McLaren','NeuMotor','Rotex','Siemens','ThinGap','UQM','YASA']
-    model = Group()
-    keyword = "Development" # this is where the user input specifies what keyword to use
-    data = filter_data(keyword)
-    power = data[0] # this is the powers of the specified motors  
-    weight = data[1]    # this is the actual weights of the specified motors  
-    motor_names = data[2]   # this is the names of all the specified motors
     
+    ##################################################################################### User Inputs ######################################################################################################
+    
+    keywords = ["Axial", "Aero", "OutRunner", "LiquidCool"] # this is where the user input specifies what keyword to use. Must be a list, even if there is only one keyword
+    power = 100 # this is where the user input specifies the desired power in units of kW
+    plot = True # this is where the user specifies if they want a plot of their regression
+    show_motors = True
+    
+    model = Group()
     indeps = IndepVarComp()
-    indeps.add_output("power", power, units = "kW", desc = "weight of each motor")
+    indeps.add_output("power", power, units = "kW", desc = "power of the motor")
     model.add_subsystem("indeps", indeps)
-    model.add_subsystem("regression", Regression(keyword = keyword))
+    model.add_subsystem("regression", Regression(keywords = keywords))
     model.connect("indeps.power", "regression.power")
 
     prob = Problem(model)
     prob.setup()
     # prob.setup(force_alloc_complex = True)
-    # prob.check_partials(compact_print = True, method = "cs")
+    # prob.check_partials(compact_print = False, method = "cs")
     prob.run_model()
 
-    plt.plot(power, weight, "o")
-    plt.plot(power, prob["regression.fitted_weight"])
-    for i in np.arange(0, len(motor_names), 1):
-        plt.annotate("%s" % motor_names[i], xy = (power[i], prob["regression.fitted_weight"][i]), textcoords = "data")
+    print("For a power of %s kW, the motor will weight %s kg" %(power, prob["regression.fitted_weight"]))
 
-    plt.title(f"Weight as a Function of Power for '{keyword}'")
-    plt.xlabel("Power (kW)")
-    plt.ylabel("Weight (kg)")
-    plt.show()
+    
+    if plot == True:
+        data = filter_data(keywords)
+        data_power = data[0]
+        data_weight = data[1]
+        motor_names = data[2]
+        plt.plot(data_power, data_weight, "o")
+        plt.plot(power, prob["regression.fitted_weight"], marker = "o", color = "red")
+        plt.plot(data_power, prob["regression.regression_weights"])
+        if show_motors == True:
+            for i in np.arange(0, len(motor_names), 1):
+                plt.annotate("%s" % motor_names[i], xy = (data_power[i], prob["regression.regression_weights"][i]), textcoords = "data")
+
+        plt.title(f"Motor Keywords: '{keywords}'")
+        plt.xlabel("Power (kW)")
+        plt.ylabel("Weight (kg)")
+        plt.legend(["Actual Motors", "Your Motor", "Regression Line"])
+        plt.show()
