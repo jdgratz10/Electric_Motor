@@ -221,7 +221,6 @@ check_data = []
 for y in np.arange(0, D_out_s_sz, 1):     # Sweep Airgap Diameter [m]
 
     for x in np.arange(0, n_sz, 1):       # Sweep Motor Operational Speeds [RPM]
-        # print(x, n[x])
     
         # Compute scaled length [m]
         L_active_s[y,x] = Vol_s[x]/(D_ag_s[y]**2)  
@@ -270,14 +269,6 @@ for y in np.arange(0, D_out_s_sz, 1):     # Sweep Airgap Diameter [m]
         if y == 4:
             check_data.append(Motor_tot_w_s[y, x])
 
-for i in np.arange(0, len(n)):
-    print("at ",n[i]," RPM, mass is roughly ",check_data[i])
-
-
-               
-
-
-
 ### Gearbox Weight Calculations ############################################################################################################################################################################
 
 E_RPM = n                                                         # 'Motor RPM' in Krantz Formula - This is the faster speed input to the gearbox [RPM]
@@ -292,23 +283,24 @@ Gearbox_w_kg = Gearbox_w*0.4535                                   # Gearbox weig
 Drive_System_w_s = Motor_tot_w_s[0,:] + Gearbox_w # total weight of drive system [kg]
 
 ### Optimization ###########################################################################################################################################################################################
-
 class Weight_Analysis(Group):
 
     def setup(self):
         ### set up inputs
         indeps = self.add_subsystem("indeps", IndepVarComp())
-        indeps.add_output("Motor_Density", Motor_Density, desc = "Volumetric Density of entire motor")
-        indeps.add_output("HP_out", HP_out, desc = "Output power of motor")
-        indeps.add_output("S_stress", S_stress, desc = "Magnetic shear stress of motor")
+        indeps.add_output("Motor_Density", Motor_Density, units = "kg / m**3", desc = "Volumetric Density of entire motor")
+        indeps.add_output("P_out", P_out, units = "W", desc = "Output power of motor in W")
+        indeps.add_output("HP_out", HP_out, units = "hp", desc = "Output power of motor in HP")
+        indeps.add_output("S_stress", S_stress, units = "Pa", desc = "Magnetic shear stress of motor")
         indeps.add_output("P_factor", P_factor, desc = "Power factor of motor")
         indeps.add_output("K_gearbox_metric", K_gearbox_metric, desc = "Technology level of gearbox")
-        indeps.add_output("R_RPM", R_RPM[0], desc = "Rotor RPM, slower gearbox speed")
-        indeps.add_output("var_speed", 20 * 10**3, desc = "Motor speed, the value that will be varied by the optimizer")
+        indeps.add_output("R_RPM", R_RPM[0], units = "rpm", desc = "Rotor RPM, slower gearbox speed")
+        indeps.add_output("var_speed", n_min * 10**3, units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
 
         ### create connections
         self.add_subsystem("combined_weight", Objective_Weight())
         self.connect("indeps.Motor_Density", "combined_weight.Motor_Density")
+        self.connect("indeps.P_out", "combined_weight.P_out")
         self.connect("indeps.HP_out", "combined_weight.HP_out")
         self.connect("indeps.S_stress", "combined_weight.S_stress")
         self.connect("indeps.P_factor", "combined_weight.P_factor")
@@ -316,43 +308,16 @@ class Weight_Analysis(Group):
         self.connect("indeps.R_RPM", "combined_weight.R_RPM")
         self.connect("indeps.var_speed", "combined_weight.var_speed")
 
-### Portion to use for testing #############################################################################################################################################################################
-# class Weight_Analysis(Group):
-
-#     def setup(self):
-#         ### set up inputs
-#         indeps = self.add_subsystem("indeps", IndepVarComp())
-#         indeps.add_output("Motor_Density", Motor_Density, desc = "Volumetric Density of entire motor")
-#         indeps.add_output("P_out", P_out, units = "W", desc = "Output power of motor in W")
-#         indeps.add_output("HP_out", HP_out, desc = "Output power of motor in HP")
-#         indeps.add_output("S_stress", S_stress, desc = "Magnetic shear stress of motor")
-#         indeps.add_output("P_factor", P_factor, desc = "Power factor of motor")
-#         indeps.add_output("K_gearbox_metric", K_gearbox_metric, desc = "Technology level of gearbox")
-#         indeps.add_output("R_RPM", R_RPM[0], desc = "Rotor RPM, slower gearbox speed")
-#         for i in n:
-#             indeps.add_output(f"var_speed{i}", i, desc = "Motor speed, the value that will be varied by the optimizer")
-
-#             ### create connections
-#             self.add_subsystem(f"combined_weight{i}", Objective_Weight())
-#             self.connect("indeps.Motor_Density", f"combined_weight{i}.Motor_Density")
-#             self.connect("indeps.P_out", f"combined_weight{i}.P_out")
-#             self.connect("indeps.HP_out", f"combined_weight{i}.HP_out")
-#             self.connect("indeps.S_stress", f"combined_weight{i}.S_stress")
-#             self.connect("indeps.P_factor", f"combined_weight{i}.P_factor")
-#             self.connect("indeps.K_gearbox_metric", f"combined_weight{i}.K_gearbox_metric")
-#             self.connect("indeps.R_RPM", f"combined_weight{i}.R_RPM")
-#             self.connect(f"indeps.var_speed{i}", f"combined_weight{i}.var_speed")
-
 if __name__ == "__main__":
 
     prob = Problem()
     prob.model = Weight_Analysis()
-    
-    prob.driver = ScipyOptimizeDriver()
-    prob.driver.options["optimizer"] = "SLSQP"
-
     prob.model.add_design_var("indeps.var_speed", lower = n_min * 10**3, upper = n_max * 10**3)
     prob.model.add_objective("combined_weight.wt")
+    
+    prob.driver = ScipyOptimizeDriver()
+    prob.driver.options["maxiter"] = 20000
+    prob.driver.options["optimizer"] = "COBYLA"
 
     prob.setup()
     # prob.setup(force_alloc_complex = True)
@@ -361,30 +326,6 @@ if __name__ == "__main__":
     # prob.run_model()
 
     print(prob["indeps.var_speed"], prob["combined_weight.wt"])
-    
-    
-    
-    # plt.plot(n, check_data, color = "blue")
-    # plt.plot(n, Gearbox_w_kg, color = "orange")
-
-    # for i in n:
-    # # print(prob["indeps.var_speed"], prob["combined_weight.wt"])
-    #     plt.plot(prob[f"indeps.var_speed{i}"], prob[f"combined_weight{i}.wt"], marker = "o", markersize = 3, color = "red")
-    #     print(prob[f"indeps.var_speed{i}"], prob[f"combined_weight{i}.wt"])
-    # plt.xlabel("RPM")
-    # plt.ylabel("weight (kg)")
-    # plt.show()
-    
-    
-    
-    # print(prob["indeps.var_speed"], prob["combined_weight.wt"])
-
-    # plt.plot(n, check_data)
-    # # print(prob["indeps.var_speed"], prob["combined_weight.wt"])
-    # plt.plot(prob["indeps.var_speed"], prob["combined_weight.wt"], marker = "o", markersize = 3, color = "red")
-    # plt.xlabel("RPM")
-    # plt.ylabel("weight (kg)")
-    # plt.show()
 
 ### Plots ##################################################################################################################################################################################################
 
@@ -427,20 +368,73 @@ if __name__ == "__main__":
 # plt.legend(['Motor Weight'])
 
 
-# ### Weight vs. Speed Plot (Motor, Gearbox, and Combined Weights)
+### Weight vs. Speed Plot (Motor, Gearbox, and Combined Weights)
 
-# plt.figure(3)
+plt.figure(3)
 
-# plt.plot(n, Drive_System_w_s[1,:],'o')
-# mySum = np.add(Gearbox_w_kg[1, :], Motor_tot_w_s[1, :])
+plt.plot(n, Drive_System_w_s[1,:],'o')
+mySum = np.add(Gearbox_w_kg[1, :], Motor_tot_w_s[1, :])
 
-# plt.plot(n, Drive_System_w_s[1,:], linewidth= 2)
-# plt.plot(n, Gearbox_w_kg[1,:], linewidth= 2)
-# plt.plot(n, Motor_tot_w_s[1,:],'b', linewidth= 2)
-# plt.plot(n, mySum, linewidth = 2)
+plt.plot(n, Drive_System_w_s[1,:], linewidth= 2)
+plt.plot(n, Gearbox_w_kg[1,:], linewidth= 2)
+plt.plot(n, Motor_tot_w_s[1,:],'b', linewidth= 2)
+plt.plot(n, mySum, linewidth = 2)
+plt.plot(prob["indeps.var_speed"], prob["combined_weight.wt"], "o", color = "red")
 
-# plt.xlabel('Motor Operating Speed, RPM')
-# plt.ylabel('Weight, kg')
+plt.xlabel('Motor Operating Speed, RPM')
+plt.ylabel('Weight, kg')
 
-# plt.legend(['Theoretical Drive Systems', '1MW Power Trend Line', 'Gearbox Weight', 'Motor Weight', "Total Assembly Weight"])
-# plt.show()
+plt.legend(['Theoretical Drive Systems', '1MW Power Trend Line', 'Gearbox Weight', 'Motor Weight', "Total Assembly Weight"])
+plt.show()
+
+### Tests ##################################################################################################################################################################################################
+#The below prints mass as a function of RPM for a similar air gap diameter to the motor being used, it is for testing purposes only
+# for i in np.arange(0, len(n)):
+#     print("at ",n[i]," RPM, mass is roughly ",check_data[i])
+
+# class Weight_Analysis(Group):
+
+#     def setup(self):
+#         ### set up inputs
+#         indeps = self.add_subsystem("indeps", IndepVarComp())
+#         indeps.add_output("Motor_Density", Motor_Density, desc = "Volumetric Density of entire motor")
+#         indeps.add_output("P_out", P_out, units = "W", desc = "Output power of motor in W")
+#         indeps.add_output("HP_out", HP_out, desc = "Output power of motor in HP")
+#         indeps.add_output("S_stress", S_stress, desc = "Magnetic shear stress of motor")
+#         indeps.add_output("P_factor", P_factor, desc = "Power factor of motor")
+#         indeps.add_output("K_gearbox_metric", K_gearbox_metric, desc = "Technology level of gearbox")
+#         indeps.add_output("R_RPM", R_RPM[0], desc = "Rotor RPM, slower gearbox speed")
+#         for i in n:
+#             indeps.add_output(f"var_speed{i}", i, desc = "Motor speed, the value that will be varied by the optimizer")
+
+#             ### create connections
+#             self.add_subsystem(f"combined_weight{i}", Objective_Weight())
+#             self.connect("indeps.Motor_Density", f"combined_weight{i}.Motor_Density")
+#             self.connect("indeps.P_out", f"combined_weight{i}.P_out")
+#             self.connect("indeps.HP_out", f"combined_weight{i}.HP_out")
+#             self.connect("indeps.S_stress", f"combined_weight{i}.S_stress")
+#             self.connect("indeps.P_factor", f"combined_weight{i}.P_factor")
+#             self.connect("indeps.K_gearbox_metric", f"combined_weight{i}.K_gearbox_metric")
+#             self.connect("indeps.R_RPM", f"combined_weight{i}.R_RPM")
+#             self.connect(f"indeps.var_speed{i}", f"combined_weight{i}.var_speed")
+
+    # for i in n:
+    # # print(prob["indeps.var_speed"], prob["combined_weight.wt"])
+    #     plt.plot(prob[f"indeps.var_speed{i}"], prob[f"combined_weight{i}.wt"], marker = "o", markersize = 3, color = "red")
+    #     print(prob[f"indeps.var_speed{i}"], prob[f"combined_weight{i}.wt"])
+    # plt.xlabel("RPM")
+    # plt.ylabel("weight (kg)")
+    # plt.show()
+    
+    
+    
+    # print(prob["indeps.var_speed"], prob["combined_weight.wt"])
+
+    # plt.plot(n, check_data)
+    # # print(prob["indeps.var_speed"], prob["combined_weight.wt"])
+    # plt.plot(prob["indeps.var_speed"], prob["combined_weight.wt"], marker = "o", markersize = 3, color = "red")
+    # plt.xlabel("RPM")
+    # plt.ylabel("weight (kg)")
+    # plt.show()
+
+    
