@@ -122,7 +122,7 @@ class Regression(ExplicitComponent): # This component calculates a linear regres
         self.coefficients = np.polyfit(self.raw_power, raw_weight, 1)    # coefficients of the linear regression line.  [0] is the slope, and [1] is the y-intercept
 
         self.add_input("power", units = "kW", desc = "power of the motor") 
-        self.add_output("fitted_weight", units = "kg", desc = "outputted weight of motor")   #this is the fitted motor weight using the linear regression
+        self.add_output("fitted_weight", units = "kg", desc = "outputted weight of motor")   
         self.add_output("regression_weights", shape = np.shape(self.raw_power), units = "kg", desc = "corresponding fitted weights for regression plot, no actual bearing on model, but used for visual aid")
 
         self.declare_partials("fitted_weight", "power", val = self.coefficients[0])
@@ -142,7 +142,7 @@ if __name__ == "__main__":
     keywords = ["Axial", "Aero", "OutRunner", "LiquidCool"] # this is where the user input specifies what keyword to use. Must be a list, even if there is only one keyword
     power = 100 # this is where the user input specifies the desired power in units of kW
     plot = True # this is where the user specifies if they want a plot of their regression
-    show_motors = True
+    show_motors = True  # this is where the user specifies if they want the names of the motors displayed on the regression plot
     
     model = Group()
     indeps = IndepVarComp()

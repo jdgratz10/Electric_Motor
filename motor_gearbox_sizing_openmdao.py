@@ -7,12 +7,15 @@
 # easily so that designing and integrating advanced electric motors into
 # turbo fan engines can become a reality.
 
-# There are three main components to this tool: motor sizing, gearbox 
-# sizing, and optimization. The first component involves finding viable
-# design volumes and weights over a range of operating speeds and powers.
-# The current gearbox sizing method uses an existing sizing algorithm based
-# on exisiting gearboxes. Currently, this only provides the weight of the
-# gearbox. Finally, gradient decent optimization is used to minimize the
+# There are three main components to this tool: optimization, 
+# motor size mapping, and gearbox size mapping. The optimization uses OpenMDAO
+# to optimize the combined weight of the motor and gearbox based on two 
+# different equations, one which gives motor volume and one which gives gearbox 
+# weight. The motor size mapping involves finding viable design volumes and 
+# weights over a range of operating speeds and powers. The current gearbox 
+# sizing method uses an existing sizing algorithm based on exisiting gearboxes. 
+# Currently, this only provides the weight of the gearbox. 
+# Finally, gradient decent optimization is used to minimize the
 # combined weight of the motor and the gearbox.
 
 # It is important to note that this tool requires the user to select and
@@ -23,20 +26,22 @@
 # To use this tool the following parameters must be known or estimated:
 # 1) Magnetic Shear Stress [N/m**2] (This can be derived from magentic and 
 #    electric loadings) - S_stress
-# 2) Operational Speed [RPM] - n
-# 3) Desired Output power [W] - P_out
-# 4) Outer Diameter of Motor [m] - D_out
-# 5) Airgap Diameter [m] - D_ag
-# 6) Number of Poles - p
+# 2) Operational Speed of motor [RPM] - n
+# 3) Desired Output power of motor [W] - P_out
+# 4) Outer Diameter of Motor [m] - D_out 
+# 5) Airgap Diameter of motor [m] - D_ag 
+# 6) Number of Poles in motor- pole_num
 # 7) Inner and Outer Diameters of All Motor Regions [m] (i.e. air gap, 
 #    copper, etc.)
 # 8) Density of Material Used in Each Motor Region [kg/m**3]
-# 9) .....
+# 9) Power factor of motor - P_factor 
+# 10) Operational Speed of rotor [RPM] - Fan_RPM 
+# 11) Technology factor of gearbox - K_gearbox 
 
-from math import pi, isinf
+from math import pi
 import numpy as np
 import matplotlib.pyplot as plt
-from openmdao.api import ExplicitComponent, Problem, Group, IndepVarComp, ExecComp, ScipyOptimizeDriver
+from openmdao.api import Problem, Group, IndepVarComp, ScipyOptimizeDriver
 from weight_comp import Objective_Weight
 
 ### Inputs #################################################################################################################################################################################################
@@ -156,11 +161,9 @@ D_ts_max = np.divide(max_ts*60, (pi*n)) # Max allowable Diameter due to tip spee
 D_ts_min = np.divide(min_ts*60, (pi*n)) # Min allowable diameter due to tip speed [m]
 #Aspect Ratio
 tau_p = (pi*D_ag_s)/pole_num        # Pole Pitch [m]
-# L_T_AR_max = D_out_s*Thermal_AR_max # Active lengths corresponding to max Thermal Aspect Ratio *:)
-# L_T_AR_min = D_out_s*Thermal_AR_min # Active lengths corresponding to min Thermal Aspect Ratio *:)
 
-L_T_AR_max = tau_p*Thermal_AR_max # Active lengths corresponding to max Thermal Aspect Ratio *:)
-L_T_AR_min = tau_p*Thermal_AR_min # Active lengths corresponding to min Thermal Aspect Ratio *:)
+L_T_AR_max = tau_p*Thermal_AR_max # Active lengths corresponding to max Thermal Aspect Ratio
+L_T_AR_min = tau_p*Thermal_AR_min # Active lengths corresponding to min Thermal Aspect Ratio
 
 L_LD_AR_max = D_out_s*LD_AR_max     # Active lengths corresponding to max L/D Aspect Ratio
 L_LD_AR_min = D_out_s*LD_AR_min     # Active lengths corresponding to min L/D Aspect Ratio
@@ -206,81 +209,9 @@ L_D_AR = np.zeros((D_out_s_sz,n_sz))            # L/D Aspect Ratio [unitless]
 L_ts_max = np.zeros((n_sz,1))                   # Corresponding Length to Max allowable Diameter
 L_ts_min = np.zeros((n_sz,1))                   # Corresponding Length to Min allowable Diameter
 
-
-z_0 = n_max*10**3         # Starting Point of Gradient Descent Method
-term_tol = 10     # Optimization termination criteria 
-num_itr_max = 2000 # Max number of iterations
-step_size = 0.001      # Step Size used in optimization
-
-
-
-
-### Map Calculations #######################################################################################################################################################################################
-
-check_data = []
-for y in np.arange(0, D_out_s_sz, 1):     # Sweep Airgap Diameter [m]
-
-    for x in np.arange(0, n_sz, 1):       # Sweep Motor Operational Speeds [RPM]
-    
-        # Compute scaled length [m]
-        L_active_s[y,x] = Vol_s[x]/(D_ag_s[y]**2)  
-        
-        # Compute scaled motor region volumes
-        
-        Heat_sink_vol_s[y,x] = pi*(Yoke_in_s[y]**2 - Heat_sink_in_s[y]**2)*L_active_s[y,x]      # Heat Sink Volume [m**3]
-        Yoke_vol_s[y,x] = pi*(Windings_in_s[y]**2 - Yoke_in_s[y]**2)*L_active_s[y,x]            # Back Yoke Volume [m**3]
-        Windings_vol_s[y,x] = pi*(Air_gap_in_s[y]**2 - Windings_in_s[y]**2)*L_active_s[y,x]     # Windings Volume [m**3]
-        Air_gap_vol_s[y,x] = pi*(Perm_mag_in_s[y]**2 - Air_gap_in_s[y]**2)*L_active_s[y,x]      # Air Gap Volume [m**3]
-        Perm_mag_vol_s[y,x] = pi*(Titanium_in_s[y]**2 - Perm_mag_in_s[y]**2)*L_active_s[y,x]    # Permanent Mag Volume [m**3]
-        Titanium_vol_s[y,x] = pi*(Carbon_fib_in_s[y]**2 - Titanium_in_s[y]**2)*L_active_s[y,x]  # Titanium Volume [m**3]
-        Carbon_fib_vol_s[y,x] = pi*(Motor_out_s[y]**2 - Carbon_fib_in_s[y]**2)*L_active_s[y,x]  # Carbon Fiber Volume [m**3]
-        
-        # Cross Check Volume Scaling [m**3]
-        
-        Vol_cc[y,x] =  pi*(Motor_out_s[y])**2*L_active_s[y,x]
-                    
-        # Scaled Weight Calculations
-        
-        Heat_sink_w_s[y,x]= Heat_sink_vol_s[y,x]*Heat_sink_d     # Scaled Weight of Heat Sink [kg]
-        Yoke_w_s[y,x] = Yoke_vol_s[y,x]*Yoke_d                   # Scaled Weight of Yoke [kg]
-        Windings_w_s[y,x] = Windings_vol_s[y,x]*Windings_d       # Scaled Weight of Windings [kg]
-        Perm_mag_w_s[y,x] = Perm_mag_vol_s[y,x]*Perm_mag_d       # Scaled Weight of Magnet [kg]
-        Titanium_w_s[y,x] = Titanium_vol_s[y,x]*Titanium_d       # Scaled Weight of Titanoim [kg]
-        Carbon_fib_w_s[y,x] = Carbon_fib_vol_s[y,x]*Carbon_fib_d # Scaled Weight of Carbon Fiber ring [kg]
-        
-        Stray_w_s[y,x] = (Vol_cc[y,x]/Vol)*Stray_w  # Scaled Stray Weight [kg]
-        
-        # Motor Total Scaled Weight [kg]
-        
-        Motor_tot_w_s[y,x] = Heat_sink_w_s[y,x]+Yoke_w_s[y,x]+Windings_w_s[y,x]+ Perm_mag_w_s[y,x]+Titanium_w_s[y,x]+Carbon_fib_w_s[y,x]+Stray_w_s[y,x]
-                   
-        # Compute Thermal Aspect Ratio [Unitless]
-        
-        Thermal_AR[y,x] = L_active_s[y,x]/tau_p[y] 
-        
-        # Compute L/D Aspect Ratio [Unitless]
-        
-        L_D_AR[y,x] = L_active_s[y,x]/D_out_s[y]
-        
-        # Compute Rotor Tip Speed Limits
-        
-        L_ts_max[x] = Vol_s[x]/((D_ts_max[x]*D_ratio)**2) # Corresponding Length to Max allowable Diameter
-        L_ts_min[x] = Vol_s[x]/((D_ts_min[x]*D_ratio)**2) # Corresponding Length to Min allowable Diameter
-        if y == 4:
-            check_data.append(Motor_tot_w_s[y, x])
-
-### Gearbox Weight Calculations ############################################################################################################################################################################
-
+### RPM initializations ###
 E_RPM = n                                                         # 'Motor RPM' in Krantz Formula - This is the faster speed input to the gearbox [RPM]
 R_RPM = np.ones((n_sz, 1))*Fan_RPM                                # 'Rotor RPM' in Krantz Formula - This is the slower speed input to gearbox [RPM]
-
-Gearbox_index = np.divide((np.power(HP_out,0.76)*np.power(E_RPM,0.13)),(np.power(R_RPM,0.89)))   # 'Index' in Krantz Formula
-Gearbox_w = K_gearbox*Gearbox_index                               # Gearbox weight [lb]
-Gearbox_w_kg = Gearbox_w*0.4535                                   # Gearbox weight [kg]
-
-### Motor + Gearbox Weight #################################################################################################################################################################################
-
-Drive_System_w_s = Motor_tot_w_s[0,:] + Gearbox_w # total weight of drive system [kg]
 
 ### Optimization ###########################################################################################################################################################################################
 class Weight_Analysis(Group):
@@ -295,7 +226,8 @@ class Weight_Analysis(Group):
         indeps.add_output("P_factor", P_factor, desc = "Power factor of motor")
         indeps.add_output("K_gearbox_metric", K_gearbox_metric, desc = "Technology level of gearbox")
         indeps.add_output("R_RPM", R_RPM[0], units = "rpm", desc = "Rotor RPM, slower gearbox speed")
-        indeps.add_output("var_speed", n_min * 10**3, units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
+        # indeps.add_output("var_speed", n_max * 10**3, units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
+        indeps.add_output("var_speed", 15 * 10**3, units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
 
         ### create connections
         self.add_subsystem("combined_weight", Objective_Weight())
@@ -312,7 +244,8 @@ if __name__ == "__main__":
 
     prob = Problem()
     prob.model = Weight_Analysis()
-    prob.model.add_design_var("indeps.var_speed", lower = n_min * 10**3, upper = n_max * 10**3)
+    # prob.model.add_design_var("indeps.var_speed", lower = n_min * 10**3, upper = n_max * 10**3)
+    prob.model.add_design_var("indeps.var_speed", lower = n_min * 10**3, upper = 15 * 10**3)
     prob.model.add_objective("combined_weight.wt")
     
     prob.driver = ScipyOptimizeDriver()
@@ -321,15 +254,83 @@ if __name__ == "__main__":
 
     prob.setup()
     # prob.setup(force_alloc_complex = True)
-    # prob.check_partials(compact_print = False, method = "cs")
+    # prob.check_partials(compact_print = True, method = "cs")
     prob.run_driver()
     # prob.run_model()
 
     print(prob["indeps.var_speed"], prob["combined_weight.wt"])
 
+### Map Calculations #######################################################################################################################################################################################
+
+    check_data = [] #used for testing purposes only
+    for y in np.arange(0, D_out_s_sz, 1):     # Sweep Airgap Diameter [m]
+
+        for x in np.arange(0, n_sz, 1):       # Sweep Motor Operational Speeds [RPM]
+    
+            # Compute scaled length [m]
+            L_active_s[y,x] = Vol_s[x]/(D_ag_s[y]**2)  
+        
+            # Compute scaled motor region volumes
+        
+            Heat_sink_vol_s[y,x] = pi*(Yoke_in_s[y]**2 - Heat_sink_in_s[y]**2)*L_active_s[y,x]      # Heat Sink Volume [m**3]
+            Yoke_vol_s[y,x] = pi*(Windings_in_s[y]**2 - Yoke_in_s[y]**2)*L_active_s[y,x]            # Back Yoke Volume [m**3]
+            Windings_vol_s[y,x] = pi*(Air_gap_in_s[y]**2 - Windings_in_s[y]**2)*L_active_s[y,x]     # Windings Volume [m**3]
+            Air_gap_vol_s[y,x] = pi*(Perm_mag_in_s[y]**2 - Air_gap_in_s[y]**2)*L_active_s[y,x]      # Air Gap Volume [m**3]
+            Perm_mag_vol_s[y,x] = pi*(Titanium_in_s[y]**2 - Perm_mag_in_s[y]**2)*L_active_s[y,x]    # Permanent Mag Volume [m**3]
+            Titanium_vol_s[y,x] = pi*(Carbon_fib_in_s[y]**2 - Titanium_in_s[y]**2)*L_active_s[y,x]  # Titanium Volume [m**3]
+            Carbon_fib_vol_s[y,x] = pi*(Motor_out_s[y]**2 - Carbon_fib_in_s[y]**2)*L_active_s[y,x]  # Carbon Fiber Volume [m**3]
+        
+            # Cross Check Volume Scaling [m**3]
+        
+            Vol_cc[y,x] =  pi*(Motor_out_s[y])**2*L_active_s[y,x]
+                    
+            # Scaled Weight Calculations
+        
+            Heat_sink_w_s[y,x]= Heat_sink_vol_s[y,x]*Heat_sink_d     # Scaled Weight of Heat Sink [kg]
+            Yoke_w_s[y,x] = Yoke_vol_s[y,x]*Yoke_d                   # Scaled Weight of Yoke [kg]
+            Windings_w_s[y,x] = Windings_vol_s[y,x]*Windings_d       # Scaled Weight of Windings [kg]
+            Perm_mag_w_s[y,x] = Perm_mag_vol_s[y,x]*Perm_mag_d       # Scaled Weight of Magnet [kg]
+            Titanium_w_s[y,x] = Titanium_vol_s[y,x]*Titanium_d       # Scaled Weight of Titanoim [kg]
+            Carbon_fib_w_s[y,x] = Carbon_fib_vol_s[y,x]*Carbon_fib_d # Scaled Weight of Carbon Fiber ring [kg]
+        
+            Stray_w_s[y,x] = (Vol_cc[y,x]/Vol)*Stray_w  # Scaled Stray Weight [kg]
+        
+            # Motor Total Scaled Weight [kg]
+        
+            Motor_tot_w_s[y,x] = Heat_sink_w_s[y,x]+Yoke_w_s[y,x]+Windings_w_s[y,x]+ Perm_mag_w_s[y,x]+Titanium_w_s[y,x]+Carbon_fib_w_s[y,x]+Stray_w_s[y,x]
+                   
+            # Compute Thermal Aspect Ratio [Unitless]
+        
+            Thermal_AR[y,x] = L_active_s[y,x]/tau_p[y] 
+        
+            # Compute L/D Aspect Ratio [Unitless]
+        
+            L_D_AR[y,x] = L_active_s[y,x]/D_out_s[y]
+        
+            # Compute Rotor Tip Speed Limits
+        
+            L_ts_max[x] = Vol_s[x]/((D_ts_max[x]*D_ratio)**2) # Corresponding Length to Max allowable Diameter
+            L_ts_min[x] = Vol_s[x]/((D_ts_min[x]*D_ratio)**2) # Corresponding Length to Min allowable Diameter
+            #the loop below is for testing purposes only
+            if y == 4:
+                check_data.append(Motor_tot_w_s[y, x])
+
+
+    
+### Gearbox Weight Calculations ############################################################################################################################################################################
+
+    Gearbox_index = np.divide((np.power(HP_out,0.76)*np.power(E_RPM,0.13)),(np.power(R_RPM,0.89)))   # 'Index' in Krantz Formula
+    Gearbox_w = K_gearbox*Gearbox_index                               # Gearbox weight [lb]
+    Gearbox_w_kg = Gearbox_w*0.4535                                   # Gearbox weight [kg]
+
+### Motor + Gearbox Weight #################################################################################################################################################################################
+
+    Drive_System_w_s = Motor_tot_w_s[0,:] + Gearbox_w # total weight of drive system [kg]
+
+
 ### Plots ##################################################################################################################################################################################################
 
-### Stack Length vs. Outer Diameter Plot (No Constraint Lines)
+# ### Stack Length vs. Outer Diameter Plot (No Constraint Lines)
 # plt.figure(0)
 # plt.plot(L_active_s, D_out_s)
 
@@ -372,14 +373,14 @@ if __name__ == "__main__":
 
 plt.figure(3)
 
-plt.plot(n, Drive_System_w_s[1,:],'o')
+plt.plot(n, Drive_System_w_s[1,:],'o')#dots for theoretical drive systems
 mySum = np.add(Gearbox_w_kg[1, :], Motor_tot_w_s[1, :])
 
-plt.plot(n, Drive_System_w_s[1,:], linewidth= 2)
-plt.plot(n, Gearbox_w_kg[1,:], linewidth= 2)
-plt.plot(n, Motor_tot_w_s[1,:],'b', linewidth= 2)
-plt.plot(n, mySum, linewidth = 2)
-plt.plot(prob["indeps.var_speed"], prob["combined_weight.wt"], "o", color = "red")
+plt.plot(n, Drive_System_w_s[1,:], linewidth= 2)#line for 1MW power trend line
+plt.plot(n, Gearbox_w_kg[1,:], linewidth= 2)#gearbox wt
+plt.plot(n, Motor_tot_w_s[1,:],'b', linewidth= 2)#motor weight
+plt.plot(n, mySum, linewidth = 2)#total weight
+plt.plot(prob["indeps.var_speed"], prob["combined_weight.wt"], "o", color = "red")#optimizer returned answer
 
 plt.xlabel('Motor Operating Speed, RPM')
 plt.ylabel('Weight, kg')
@@ -389,52 +390,5 @@ plt.show()
 
 ### Tests ##################################################################################################################################################################################################
 #The below prints mass as a function of RPM for a similar air gap diameter to the motor being used, it is for testing purposes only
-# for i in np.arange(0, len(n)):
-#     print("at ",n[i]," RPM, mass is roughly ",check_data[i])
-
-# class Weight_Analysis(Group):
-
-#     def setup(self):
-#         ### set up inputs
-#         indeps = self.add_subsystem("indeps", IndepVarComp())
-#         indeps.add_output("Motor_Density", Motor_Density, desc = "Volumetric Density of entire motor")
-#         indeps.add_output("P_out", P_out, units = "W", desc = "Output power of motor in W")
-#         indeps.add_output("HP_out", HP_out, desc = "Output power of motor in HP")
-#         indeps.add_output("S_stress", S_stress, desc = "Magnetic shear stress of motor")
-#         indeps.add_output("P_factor", P_factor, desc = "Power factor of motor")
-#         indeps.add_output("K_gearbox_metric", K_gearbox_metric, desc = "Technology level of gearbox")
-#         indeps.add_output("R_RPM", R_RPM[0], desc = "Rotor RPM, slower gearbox speed")
-#         for i in n:
-#             indeps.add_output(f"var_speed{i}", i, desc = "Motor speed, the value that will be varied by the optimizer")
-
-#             ### create connections
-#             self.add_subsystem(f"combined_weight{i}", Objective_Weight())
-#             self.connect("indeps.Motor_Density", f"combined_weight{i}.Motor_Density")
-#             self.connect("indeps.P_out", f"combined_weight{i}.P_out")
-#             self.connect("indeps.HP_out", f"combined_weight{i}.HP_out")
-#             self.connect("indeps.S_stress", f"combined_weight{i}.S_stress")
-#             self.connect("indeps.P_factor", f"combined_weight{i}.P_factor")
-#             self.connect("indeps.K_gearbox_metric", f"combined_weight{i}.K_gearbox_metric")
-#             self.connect("indeps.R_RPM", f"combined_weight{i}.R_RPM")
-#             self.connect(f"indeps.var_speed{i}", f"combined_weight{i}.var_speed")
-
-    # for i in n:
-    # # print(prob["indeps.var_speed"], prob["combined_weight.wt"])
-    #     plt.plot(prob[f"indeps.var_speed{i}"], prob[f"combined_weight{i}.wt"], marker = "o", markersize = 3, color = "red")
-    #     print(prob[f"indeps.var_speed{i}"], prob[f"combined_weight{i}.wt"])
-    # plt.xlabel("RPM")
-    # plt.ylabel("weight (kg)")
-    # plt.show()
-    
-    
-    
-    # print(prob["indeps.var_speed"], prob["combined_weight.wt"])
-
-    # plt.plot(n, check_data)
-    # # print(prob["indeps.var_speed"], prob["combined_weight.wt"])
-    # plt.plot(prob["indeps.var_speed"], prob["combined_weight.wt"], marker = "o", markersize = 3, color = "red")
-    # plt.xlabel("RPM")
-    # plt.ylabel("weight (kg)")
-    # plt.show()
-
-    
+for i in np.arange(0, len(n)):
+    print("at ",n[i]," RPM, motor mass is roughly ",check_data[i])
