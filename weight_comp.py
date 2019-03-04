@@ -17,8 +17,8 @@ class Objective_Weight(ExplicitComponent):
 
         self.declare_partials("wt", "var_speed")
         self.declare_partials("wt", "Motor_Density")
-        self.declare_partials("wt", "P_out", method = "fd")
-        self.declare_partials("wt", "HP_out", method = "fd")
+        self.declare_partials("wt", "P_out")
+        self.declare_partials("wt", "HP_out")
         self.declare_partials("wt", "S_stress")
         self.declare_partials("wt", "P_factor")
         self.declare_partials("wt", "K_gearbox_metric")
@@ -33,33 +33,26 @@ class Objective_Weight(ExplicitComponent):
         K_gearbox = inputs["K_gearbox_metric"]
         R_RPM = inputs["R_RPM"]
         var_speed = inputs["var_speed"]
-        # print("Motor_Density is: ", inputs["Motor_Density"])
-        # print("P_out is: ", inputs["P_out"])
-        # print("HP_out is: ", inputs["HP_out"])
-        # print("S_stress is: ", inputs["S_stress"])
-        # print("P_factor is: ", inputs["P_factor"])
-        # print("K_gearbox_metric is: ", inputs["K_gearbox_metric"])
-        # print("R_RPM is: ", inputs["R_RPM"])
-        # print("var_speed is: ", inputs["var_speed"])
 
         outputs["wt"] = rho * (pi / 4) * 60 * P_out / (pi**2 * S_stress * P_factor * var_speed) + K_gearbox * HP_out**.76 * var_speed**.13 / R_RPM**.89 
-        motor = rho * (pi / 4) * 60 * P_out / (pi**2 * S_stress * P_factor * var_speed)
-        gearbox = K_gearbox * HP_out**.76 * var_speed**.13 / R_RPM**.89 
-        # print("Motor Weight: ", motor, "gearbox weight: ", gearbox)
+        motor = rho * (pi / 4) * 60 * P_out / (pi**2 * S_stress * P_factor * var_speed * .95)
+        print("Motor Weight: ", motor)
 
     def compute_partials(self, inputs, J):
         rho = inputs["Motor_Density"]
-        P_out = inputs["HP_out"]
+        P_out = inputs["P_out"]
+        HP_out = inputs["HP_out"]
         S_stress = inputs["S_stress"]
         P_factor = inputs["P_factor"]
         K_gearbox = inputs["K_gearbox_metric"]
         R_RPM = inputs["R_RPM"]
         var_speed = inputs["var_speed"]
         
-        J["wt", "var_speed"] = -rho * (pi / 4) * 60 * P_out / (pi**2 * S_stress * P_factor * var_speed**2) + K_gearbox * P_out**.76 * .13 / (R_RPM**.89 * var_speed**.87)
+        J["wt", "var_speed"] = -rho * (pi / 4) * 60 * P_out / (pi**2 * S_stress * P_factor * var_speed**2) + K_gearbox * HP_out**.76 * .13 / (R_RPM**.89 * var_speed**.87)
         J["wt", "Motor_Density"] = pi / 4 * 60 * P_out / (pi**2 * S_stress * P_factor * var_speed)
-        J["wt", "HP_out"] = rho * (pi / 4) * 60 / (pi**2 * S_stress * P_factor * var_speed) + .76 * K_gearbox * P_out**(-.24) * var_speed**.13 / (R_RPM**.89)
+        J["wt", "P_out"] = rho * (pi / 4) * 60 / (pi**2 * S_stress * P_factor * var_speed)
+        J["wt", "HP_out"] = .76 * K_gearbox * HP_out**(-.24) * var_speed**.13 / (R_RPM**.89)
         J["wt", "S_stress"] = -rho * (pi / 4) * 60 * P_out / (pi**2 * S_stress**2 * P_factor * var_speed)
         J["wt", "P_factor"] = -rho * (pi / 4) * 60 * P_out / (pi**2 * S_stress * P_factor**2 * var_speed)
-        J["wt", "K_gearbox_metric"] = P_out**.76 * var_speed**.13 / (R_RPM**.89)
-        J["wt", "R_RPM"] = -.89 * K_gearbox * P_out**.76 * var_speed**.13 / (R_RPM**1.89)
+        J["wt", "K_gearbox_metric"] = HP_out**.76 * var_speed**.13 / (R_RPM**.89)
+        J["wt", "R_RPM"] = -.89 * K_gearbox * HP_out**.76 * var_speed**.13 / (R_RPM**1.89)
