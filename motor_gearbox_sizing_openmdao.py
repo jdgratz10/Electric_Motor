@@ -110,10 +110,9 @@ D_out_s_min = 0.15              # Min Outer Diameter to explore in algorithm [m]
 
 ### Conversions ############################################################################################################################################################################################
 
+### Conversions ###
 K_gearbox_metric = .454 * K_gearbox # Conversion factor from pounds to kg
-HP_out = P_out*0.00134102           # Convert Rated Output power to horsepower [HP] - INPUT
-
-### Compute Baseline Calculations ##########################################################################################################################################################################
+HP_out = P_out*0.00134102           # Convert Rated Output power to horsepower [HP] - INPUT 
 
 ### Diameter Ratios ###
 D_ratio = D_ag/D_out                                                                    # Diameter ratio to keep constant [unitless]
@@ -390,5 +389,5 @@ plt.show()
 
 ### Tests ##################################################################################################################################################################################################
 #The below prints mass as a function of RPM for a similar air gap diameter to the motor being used, it is for testing purposes only
-for i in np.arange(0, len(n)):
-    print("at ",n[i]," RPM, motor mass is roughly ",check_data[i])
+# for i in np.arange(0, len(n)):
+#     print("at ",n[i]," RPM, motor mass is roughly ",check_data[i])
