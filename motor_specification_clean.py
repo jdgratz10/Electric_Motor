@@ -134,16 +134,18 @@ class Regression(ExplicitComponent): # This component calculates a linear regres
 
 if __name__ == "__main__":
     
-    # the list below is all the relevant keywords, and can be used to test the model
-    # words = ['Aero', 'Auto', 'OutRunner',  'InRunner',  'Dual', 'Axial',      'Radial', 'AirCool',    'LiquidCool', 'Development','Commercial', 'BMW','Brusa','Emrax','Joby','Launchpoint','Magicall','MagniX','Magnax','McLaren','NeuMotor','Rotex','Siemens','ThinGap','UQM','YASA']
+    # the list below is all the relevant keywords
+    # words = ['Aero', 'Auto', 'OutRunner',  'InRunner',  'Dual', 'Axial',      'Radial', 'AirCool',    'LiquidCool', 'Development','Commercial', 'BMW',
+    # 'Brusa','Emrax','Joby','Launchpoint','Magicall','MagniX','Magnax','McLaren','NeuMotor','Rotex','Siemens','ThinGap','UQM','YASA']
     
     ##################################################################################### User Inputs ######################################################################################################
     
-    keywords = ["Axial", "Aero", "OutRunner", "LiquidCool"] # this is where the user input specifies what keyword to use. Must be a list, even if there is only one keyword
-    power = 100 # this is where the user input specifies the desired power in units of kW
-    plot = True # this is where the user specifies if they want a plot of their regression
-    show_motors = True  # this is where the user specifies if they want the names of the motors displayed on the regression plot
+    keywords = ["Axial", "Aero", "OutRunner", "LiquidCool"] # user input specifies what keyword to use. Must be a list, even if there is only one keyword
+    power = 100 # user input specifies the desired power in units of kW
+    plot = True # user specifies if they want a plot of their regression
+    show_motors = True  # user specifies if they want the names of the motors displayed on the regression plot
     
+    #################################################################################### OpenMDAO model ####################################################################################################
     model = Group()
     indeps = IndepVarComp()
     indeps.add_output("power", power, units = "kW", desc = "power of the motor")
@@ -159,7 +161,7 @@ if __name__ == "__main__":
 
     print("For a power of %s kW, the motor will weight %s kg" %(power, prob["regression.fitted_weight"]))
 
-    
+    ########################################################################################## Plots #######################################################################################################
     if plot == True:
         data = filter_data(keywords)
         data_power = data[0]

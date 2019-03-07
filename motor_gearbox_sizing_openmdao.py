@@ -241,6 +241,7 @@ class Weight_Analysis(Group):
 
 if __name__ == "__main__":
 
+### OpenMDAO model #########################################################################################################################################################################################
     prob = Problem()
     prob.model = Weight_Analysis()
     # prob.model.add_design_var("indeps.var_speed", lower = n_min * 10**3, upper = n_max * 10**3)
@@ -257,7 +258,7 @@ if __name__ == "__main__":
     prob.run_driver()
     # prob.run_model()
 
-    print(prob["indeps.var_speed"], prob["combined_weight.wt"])
+    print("RPM: ", prob["indeps.var_speed"], "Combined Weight: ", prob["combined_weight.wt"]) #at 15,000 RPM, actual motor weight = 65.381 kg, gearbox weight from equation = 16.897 kg, total = 82.278 kg
 
 ### Map Calculations #######################################################################################################################################################################################
 
@@ -321,7 +322,7 @@ if __name__ == "__main__":
     Gearbox_index = np.divide((np.power(HP_out,0.76)*np.power(E_RPM,0.13)),(np.power(R_RPM,0.89)))   # 'Index' in Krantz Formula
     Gearbox_w = K_gearbox*Gearbox_index                               # Gearbox weight [lb]
     Gearbox_w_kg = Gearbox_w*0.4535                                   # Gearbox weight [kg]
-
+    
 ### Motor + Gearbox Weight #################################################################################################################################################################################
 
     Drive_System_w_s = Motor_tot_w_s[0,:] + Gearbox_w # total weight of drive system [kg]
@@ -384,7 +385,7 @@ plt.plot(prob["indeps.var_speed"], prob["combined_weight.wt"], "o", color = "red
 plt.xlabel('Motor Operating Speed, RPM')
 plt.ylabel('Weight, kg')
 
-plt.legend(['Theoretical Drive Systems', '1MW Power Trend Line', 'Gearbox Weight', 'Motor Weight', "Total Assembly Weight"])
+plt.legend(['Theoretical Drive Systems', '1MW Power Trend Line', 'Gearbox Weight', 'Motor Weight', "Total Assembly Weight", "Optimizer's Total Assembly Weight"])
 plt.show()
 
 ### Tests ##################################################################################################################################################################################################
