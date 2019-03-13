@@ -34,7 +34,7 @@ from openmdao.api import Problem, Group, IndepVarComp, ExplicitComponent
 # 'Brusa','Emrax','Joby','Launchpoint','Magicall','MagniX','Magnax','McLaren','NeuMotor','Rotex','Siemens','ThinGap','UQM','YASA']
     
 keywords = ["Axial", "Aero", "OutRunner", "LiquidCool"] # user input specifies what keyword to use. Must be a list, even if there is only one keyword
-power = 100 # user input specifies the desired power in units of kW
+power = 545. # user input specifies the desired power in units of kW
 plot = True # user specifies if they want a plot of their regression
 show_motors = True  # user specifies if they want the names of the motors displayed on the regression plot
 
@@ -171,7 +171,7 @@ if __name__ == "__main__":
     # prob.check_partials(compact_print = False, method = "cs")
     prob.run_model()
 
-    print("For a power of %s kW, the motor will weigh %s kg" %(prob["indeps.power"], prob["regression.wt"]))
+    print("For a power of %s kW, the motor will weigh %s kg, power density: %s" %(power, prob["regression.fitted_weight"],power/prob["regression.wt"]))
 
 ########################################################################################## Plots #######################################################################################################
     if plot == True:
