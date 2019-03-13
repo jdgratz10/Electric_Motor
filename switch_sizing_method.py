@@ -66,7 +66,7 @@ class Weight(Group):
 
 
 prob = Problem()
-prob.model = Weight(algorithm = "computation", power = 1000)
+prob.model = Weight(algorithm = "regression", power = 1000)
 prob.setup()
 
 if prob.model.options["algorithm"] == "regression":

@@ -3,7 +3,7 @@ import unittest
 from openmdao.api import Problem, IndepVarComp
 from openmdao.utils.assert_utils import assert_rel_error, assert_check_partials
 
-from weight_comp import Objective_Weight  
+from computational_sizing_component import Objective_Weight  
 
 class TestMotorWeight(unittest.TestCase):
     
