@@ -27,6 +27,19 @@ from openmdao.api import Problem, Group, IndepVarComp, ExplicitComponent
 # 'Development','Commercial'
 # 'BMW','Brusa','Emrax','Joby','Launchpoint','Magicall','MagniX','Magnax','Marand','McLaren','MTS','NeuMotor','Rotex','Safran','Siemens','ThinGap','UQM','YASA' (MTS, Safran, and Marand aren't actually valid)
 
+##################################################################################### User Inputs ######################################################################################################
+
+# the list below is all the relevant keywords
+# words = ['Aero', 'Auto', 'OutRunner',  'InRunner',  'Dual', 'Axial',      'Radial', 'AirCool',    'LiquidCool', 'Development','Commercial', 'BMW',
+# 'Brusa','Emrax','Joby','Launchpoint','Magicall','MagniX','Magnax','McLaren','NeuMotor','Rotex','Siemens','ThinGap','UQM','YASA']
+    
+keywords = ["Axial", "Aero", "OutRunner", "LiquidCool"] # user input specifies what keyword to use. Must be a list, even if there is only one keyword
+power = 100 # user input specifies the desired power in units of kW
+plot = True # user specifies if they want a plot of their regression
+show_motors = True  # user specifies if they want the names of the motors displayed on the regression plot
+
+#################################################################################### Data Collection #######################################################################################################
+
 MotorDatum = namedtuple('MotorDatum',['pwr', 'pwr_max', 'rpm', 'rpm_max', 'gr', 't', 't_max', 'v', 'w', 'eff', 'cost']) 
 
 Motors = (
@@ -88,6 +101,8 @@ Motors = (
     ('YASA P400',                       MotorDatum(pwr=60, pwr_max=160, rpm=2250, rpm_max=8000, gr=1, t=255, t_max=370, v=0., w=23.6, eff=1, cost=0), set(('Auto','OutRunner','Radial','LiquidCool','Commercial','YASA'))),
 )
 
+#################################################################################### Necessary Function(s) #################################################################################################
+
 def filter_data(keywords): # This function extracts the motor weight, motor power, and motor name for each motor in the data set whose keywords include the keyword specified
     keywords = set(keywords)
     x = []
@@ -109,6 +124,9 @@ def filter_data(keywords): # This function extracts the motor weight, motor powe
 
     return(x, y, motors)
 
+
+#################################################################################### OpenMDAO model ####################################################################################################
+
 class Regression(ExplicitComponent): # This component calculates a linear regression and its derivatives for the power and weight of the desired motors.
 
     def initialize(self):
@@ -122,53 +140,47 @@ class Regression(ExplicitComponent): # This component calculates a linear regres
         self.coefficients = np.polyfit(self.raw_power, raw_weight, 1)    # coefficients of the linear regression line.  [0] is the slope, and [1] is the y-intercept
 
         self.add_input("power", units = "kW", desc = "power of the motor") 
-        self.add_output("fitted_weight", units = "kg", desc = "outputted weight of motor")   
+        self.add_output("wt", units = "kg", desc = "outputted weight of motor")   
         self.add_output("regression_weights", shape = np.shape(self.raw_power), units = "kg", desc = "corresponding fitted weights for regression plot, no actual bearing on model, but used for visual aid")
 
-        self.declare_partials("fitted_weight", "power", val = self.coefficients[0])
+        self.declare_partials("wt", "power", val = self.coefficients[0])
 
     def compute(self, inputs, outputs):
-        outputs["fitted_weight"] = np.add(np.multiply(self.coefficients[0], inputs["power"]), self.coefficients[1])
+        outputs["wt"] = np.add(np.multiply(self.coefficients[0], inputs["power"]), self.coefficients[1])
         outputs["regression_weights"] = np.add(np.multiply(self.coefficients[0], self.raw_power), self.coefficients[1])
 
+class Regression_Weight(Group):
+
+    def setup(self):
+        ### set up inputs
+        indeps = self.add_subsystem("indeps", IndepVarComp())
+        indeps.add_output("power", power, units = "kW", desc = "power of the motor")
+        self.add_subsystem("regression", Regression(keywords = keywords))
+
+        ### create connections
+        self.connect("indeps.power", "regression.power")
 
 if __name__ == "__main__":
     
-    # the list below is all the relevant keywords
-    # words = ['Aero', 'Auto', 'OutRunner',  'InRunner',  'Dual', 'Axial',      'Radial', 'AirCool',    'LiquidCool', 'Development','Commercial', 'BMW',
-    # 'Brusa','Emrax','Joby','Launchpoint','Magicall','MagniX','Magnax','McLaren','NeuMotor','Rotex','Siemens','ThinGap','UQM','YASA']
-    
-    ##################################################################################### User Inputs ######################################################################################################
-    
-    keywords = ["Axial", "Aero", "OutRunner", "LiquidCool"] # user input specifies what keyword to use. Must be a list, even if there is only one keyword
-    power = 100 # user input specifies the desired power in units of kW
-    plot = True # user specifies if they want a plot of their regression
-    show_motors = True  # user specifies if they want the names of the motors displayed on the regression plot
-    
-    #################################################################################### OpenMDAO model ####################################################################################################
-    model = Group()
-    indeps = IndepVarComp()
-    indeps.add_output("power", power, units = "kW", desc = "power of the motor")
-    model.add_subsystem("indeps", indeps)
-    model.add_subsystem("regression", Regression(keywords = keywords))
-    model.connect("indeps.power", "regression.power")
+#################################################################################### OpenMDAO instantiation ####################################################################################################
 
-    prob = Problem(model)
+    prob = Problem()
+    prob.model = Regression_Weight()
     prob.setup()
     # prob.setup(force_alloc_complex = True)
     # prob.check_partials(compact_print = False, method = "cs")
     prob.run_model()
 
-    print("For a power of %s kW, the motor will weight %s kg" %(power, prob["regression.fitted_weight"]))
+    print("For a power of %s kW, the motor will weigh %s kg" %(prob["indeps.power"], prob["regression.wt"]))
 
-    ########################################################################################## Plots #######################################################################################################
+########################################################################################## Plots #######################################################################################################
     if plot == True:
         data = filter_data(keywords)
         data_power = data[0]
         data_weight = data[1]
         motor_names = data[2]
         plt.plot(data_power, data_weight, "o")
-        plt.plot(power, prob["regression.fitted_weight"], marker = "o", color = "red")
+        plt.plot(power, prob["regression.wt"], marker = "o", color = "red")
         plt.plot(data_power, prob["regression.regression_weights"])
         if show_motors == True:
             for i in np.arange(0, len(motor_names), 1):

@@ -156,7 +156,7 @@ Vol_s = np.divide(P_out*60,(pi**2*S_stress*n*E*P_factor))   # Calculate D**2*L [
 ### Ranges of Viable Design Space ###
 
 #Tip Speed
-D_ts_max = np.divide(max_ts*60, (pi*n)) # Max allowable Diameter due to tip speed [m]
+D_ts_max = np.divide(max_ts*60, (pi*n)) # Max allowable Diameter due to tip speed [m] 
 D_ts_min = np.divide(min_ts*60, (pi*n)) # Min allowable diameter due to tip speed [m]
 #Aspect Ratio
 tau_p = (pi*D_ag_s)/pole_num        # Pole Pitch [m]
@@ -213,7 +213,7 @@ E_RPM = n                                                         # 'Motor RPM' 
 R_RPM = np.ones((n_sz, 1))*Fan_RPM                                # 'Rotor RPM' in Krantz Formula - This is the slower speed input to gearbox [RPM]
 
 ### Optimization ###########################################################################################################################################################################################
-class Weight_Analysis(Group):
+class Computational_Weight(Group):
 
     def setup(self):
         ### set up inputs
@@ -243,9 +243,8 @@ if __name__ == "__main__":
 
 ### OpenMDAO model #########################################################################################################################################################################################
     prob = Problem()
-    prob.model = Weight_Analysis()
-    # prob.model.add_design_var("indeps.var_speed", lower = n_min * 10**3, upper = n_max * 10**3)
-    prob.model.add_design_var("indeps.var_speed", lower = n_min * 10**3, upper = 15 * 10**3)
+    prob.model = Computational_Weight()
+    prob.model.add_design_var("indeps.var_speed", lower = n_min * 10**3, upper = n_max * 10**3)
     prob.model.add_objective("combined_weight.wt")
     
     prob.driver = ScipyOptimizeDriver()
@@ -322,7 +321,7 @@ if __name__ == "__main__":
     Gearbox_index = np.divide((np.power(HP_out,0.76)*np.power(E_RPM,0.13)),(np.power(R_RPM,0.89)))   # 'Index' in Krantz Formula
     Gearbox_w = K_gearbox*Gearbox_index                               # Gearbox weight [lb]
     Gearbox_w_kg = Gearbox_w*0.4535                                   # Gearbox weight [kg]
-    
+
 ### Motor + Gearbox Weight #################################################################################################################################################################################
 
     Drive_System_w_s = Motor_tot_w_s[0,:] + Gearbox_w # total weight of drive system [kg]
@@ -330,65 +329,60 @@ if __name__ == "__main__":
 
 ### Plots ##################################################################################################################################################################################################
 
-# ### Stack Length vs. Outer Diameter Plot (No Constraint Lines)
-# plt.figure(0)
-# plt.plot(L_active_s, D_out_s)
+### Stack Length vs. Outer Diameter Plot (No Constraint Lines)
+    plt.figure(0)
+    plt.plot(L_active_s, D_out_s)
 
-# plt.xlabel('Stack Length, m')
-# plt.ylabel('Outer Diameter, m')
-# plt.legend(["%d RPM" % rpm for rpm in n])
+    plt.xlabel('Stack Length, m')
+    plt.ylabel('Outer Diameter, m')
+    plt.legend(["%d RPM" % rpm for rpm in n])
 
-# ### Stack Length vs. Outer Diameter Plot (With Constraint Lines)
+### Stack Length vs. Outer Diameter Plot (With Constraint Lines)
 
-# plt.figure(1)
+    plt.figure(1)
 
-# plt.plot(L_active_s, D_out_s, linewidth=1.25)
-# plt.plot(L_ts_max, D_ts_max, ':k', linewidth= 2.5)
-# plt.plot(L_ts_min, D_ts_min, ':k', linewidth= 2.5)
-# plt.plot(L_T_AR_max, D_out_s, '--k', linewidth= 1.75)
-# plt.plot(L_LD_AR_min, D_out_s, '-.k', linewidth= 1.75)
+    plt.plot(L_active_s, D_out_s, linewidth=1.25)
+    plt.plot(L_ts_max, D_ts_max, ':k', linewidth= 2.5)
+    plt.plot(L_ts_min, D_ts_min, ':k', linewidth= 2.5)
+    plt.plot(L_T_AR_max, D_out_s, '--k', linewidth= 1.75)
+    plt.plot(L_LD_AR_min, D_out_s, '-.k', linewidth= 1.75)
 
-# plt.xlabel('Stack Length, m')
-# plt.ylabel('Outer Diameter, m')
+    plt.xlabel('Stack Length, m')
+    plt.ylabel('Outer Diameter, m')
 
-# axes = plt.gca()
-# axes.set_xlim([0.00,2.10])
-# axes.set_ylim([0.14,0.61])
+    axes = plt.gca()
+    axes.set_xlim([0.00,2.10])
+    axes.set_ylim([0.14,0.61])
 
-# plt.legend(["%d RPM" % rpm for rpm in n])
+    plt.legend(["%d RPM" % rpm for rpm in n])
 
-# ### Weight vs. Speed Plot (Just Motor)
+### Weight vs. Speed Plot (Just Motor)
 
-# plt.figure(2)
+    plt.figure(2)
 
-# plt.plot(n, Motor_tot_w_s[1,:],'b', linewidth=2)
+    plt.plot(n, Motor_tot_w_s[1,:],'b', linewidth=2)
 
-# plt.xlabel('Motor Operating Speed, RPM')
-# plt.ylabel('Weight, kg')
+    plt.xlabel('Motor Operating Speed, RPM')
+    plt.ylabel('Weight, kg')
 
-# plt.legend(['Motor Weight'])
+    plt.legend(['Motor Weight'])
 
 
-### Weight vs. Speed Plot (Motor, Gearbox, and Combined Weights)
+## Weight vs. Speed Plot (Motor, Gearbox, and Combined Weights)
 
-plt.figure(3)
+    plt.figure(3)
 
-plt.plot(n, Drive_System_w_s[1,:],'o')#dots for theoretical drive systems
-mySum = np.add(Gearbox_w_kg[1, :], Motor_tot_w_s[1, :])
+    plt.plot(n, Drive_System_w_s[1,:],'o')#dots for theoretical drive systems
+    mySum = np.add(Gearbox_w_kg[1, :], Motor_tot_w_s[1, :])
 
-plt.plot(n, Drive_System_w_s[1,:], linewidth= 2)#line for 1MW power trend line
-plt.plot(n, Gearbox_w_kg[1,:], linewidth= 2)#gearbox wt
-plt.plot(n, Motor_tot_w_s[1,:],'b', linewidth= 2)#motor weight
-plt.plot(n, mySum, linewidth = 2)#total weight
-plt.plot(prob["indeps.var_speed"], prob["combined_weight.wt"], "o", color = "red")#optimizer returned answer
+    plt.plot(n, Drive_System_w_s[1,:], linewidth= 2)#line for 1MW power trend line
+    plt.plot(n, Gearbox_w_kg[1,:], linewidth= 2)#gearbox wt
+    plt.plot(n, Motor_tot_w_s[1,:],'b', linewidth= 2)#motor weight
+    plt.plot(n, mySum, linewidth = 2)#total weight
+    plt.plot(prob["indeps.var_speed"], prob["combined_weight.wt"], "o", color = "red")#optimizer returned answer
 
-plt.xlabel('Motor Operating Speed, RPM')
-plt.ylabel('Weight, kg')
+    plt.xlabel('Motor Operating Speed, RPM')
+    plt.ylabel('Weight, kg')
 
-plt.legend(['Theoretical Drive Systems', '1MW Power Trend Line', 'Gearbox Weight', 'Motor Weight', "Total Assembly Weight", "Optimizer's Total Assembly Weight"])
-plt.show()
-
-### Tests ##################################################################################################################################################################################################
-#The below prints mass as a function of RPM for a similar air gap diameter to the motor being used, it is for testing purposes only
-# for i in np.arange(0, len(n)):
-#     print("at ",n[i]," RPM, motor mass is roughly ",check_data[i])
+    plt.legend(['Theoretical Drive Systems', '1MW Power Trend Line', 'Gearbox Weight', 'Motor Weight', "Total Assembly Weight", "Optimizer's Total Assembly Weight"])
+    plt.show()

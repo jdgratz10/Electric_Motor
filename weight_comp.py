@@ -35,8 +35,6 @@ class Objective_Weight(ExplicitComponent):
         var_speed = inputs["var_speed"]
 
         outputs["wt"] = rho * (pi / 4) * 60 * P_out / (pi**2 * S_stress * P_factor * var_speed) + K_gearbox * HP_out**.76 * var_speed**.13 / R_RPM**.89 
-        # motor = rho * (pi / 4) * 60 * P_out / (pi**2 * S_stress * P_factor * var_speed * .95)
-        # print("Motor Weight: ", motor)
 
     def compute_partials(self, inputs, J):
         rho = inputs["Motor_Density"]
