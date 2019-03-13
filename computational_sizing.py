@@ -225,8 +225,8 @@ class Computational_Weight(Group):
         indeps.add_output("P_factor", P_factor, desc = "Power factor of motor")
         indeps.add_output("K_gearbox_metric", K_gearbox_metric, desc = "Technology level of gearbox")
         indeps.add_output("R_RPM", R_RPM[0], units = "rpm", desc = "Rotor RPM, slower gearbox speed")
-        # indeps.add_output("var_speed", n_max * 10**3, units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
-        indeps.add_output("var_speed", 15 * 10**3, units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
+        # indeps.add_output("motor_speed", n_max * 10**3, units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
+        indeps.add_output("motor_speed", 15 * 10**3, units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
 
         ### create connections
         self.add_subsystem("combined_weight", Objective_Weight())
@@ -237,14 +237,14 @@ class Computational_Weight(Group):
         self.connect("indeps.P_factor", "combined_weight.P_factor")
         self.connect("indeps.K_gearbox_metric", "combined_weight.K_gearbox_metric")
         self.connect("indeps.R_RPM", "combined_weight.R_RPM")
-        self.connect("indeps.var_speed", "combined_weight.var_speed")
+        self.connect("indeps.motor_speed", "combined_weight.motor_speed")
 
 if __name__ == "__main__":
 
 ### OpenMDAO model #########################################################################################################################################################################################
     prob = Problem()
     prob.model = Computational_Weight()
-    prob.model.add_design_var("indeps.var_speed", lower = n_min * 10**3, upper = n_max * 10**3)
+    prob.model.add_design_var("indeps.motor_speed", lower = n_min * 10**3, upper = n_max * 10**3)
     prob.model.add_objective("combined_weight.wt")
     
     prob.driver = ScipyOptimizeDriver()
@@ -257,7 +257,7 @@ if __name__ == "__main__":
     prob.run_driver()
     # prob.run_model()
 
-    print("RPM: ", prob["indeps.var_speed"], "Combined Weight: ", prob["combined_weight.wt"]) #at 15,000 RPM, actual motor weight = 65.381 kg, gearbox weight from equation = 16.897 kg, total = 82.278 kg
+    print("RPM: ", prob["indeps.motor_speed"], "Combined Weight: ", prob["combined_weight.wt"]) #at 15,000 RPM, actual motor weight = 65.381 kg, gearbox weight from equation = 16.897 kg, total = 82.278 kg
 
 ### Map Calculations #######################################################################################################################################################################################
 
@@ -379,7 +379,7 @@ if __name__ == "__main__":
     plt.plot(n, Gearbox_w_kg[1,:], linewidth= 2)#gearbox wt
     plt.plot(n, Motor_tot_w_s[1,:],'b', linewidth= 2)#motor weight
     plt.plot(n, mySum, linewidth = 2)#total weight
-    plt.plot(prob["indeps.var_speed"], prob["combined_weight.wt"], "o", color = "red")#optimizer returned answer
+    plt.plot(prob["indeps.motor_speed"], prob["combined_weight.wt"], "o", color = "red")#optimizer returned answer
 
     plt.xlabel('Motor Operating Speed, RPM')
     plt.ylabel('Weight, kg')
