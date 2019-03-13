@@ -171,7 +171,7 @@ if __name__ == "__main__":
     # prob.check_partials(compact_print = False, method = "cs")
     prob.run_model()
 
-    print("For a power of %s kW, the motor will weigh %s kg, power density: %s" %(power, prob["regression.fitted_weight"],power/prob["regression.wt"]))
+    print("For a power of %s kW, the motor will weigh %s kg, power density: %s" %(power, prob["regression.wt"],power/prob["regression.wt"]))
 
 ########################################################################################## Plots #######################################################################################################
     if plot == True:
