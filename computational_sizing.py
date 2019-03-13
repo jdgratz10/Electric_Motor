@@ -27,7 +27,7 @@
 # 1) Magnetic Shear Stress [N/m**2] (This can be derived from magentic and 
 #    electric loadings) - S_stress
 # 2) Operational Speed of motor [RPM] - n
-# 3) Desired Output power of motor [W] - P_out
+# 3) Desired Output power of motor [kW] - P_out
 # 4) Outer Diameter of Motor [m] - D_out 
 # 5) Airgap Diameter of motor [m] - D_ag 
 # 6) Number of Poles in motor- pole_num
@@ -42,7 +42,7 @@ from math import pi
 import numpy as np
 import matplotlib.pyplot as plt
 from openmdao.api import Problem, Group, IndepVarComp, ScipyOptimizeDriver
-from weight_comp import Objective_Weight
+from computational_sizing_component import Objective_Weight
 
 ### Inputs #################################################################################################################################################################################################
 
@@ -54,7 +54,7 @@ S_stress = 24.1*10**3           # Rated Shear Stress for UIUC Motor - INPUT
 
 ### Design Parameters###
 #Power
-P_out = 1.0 * 10**6             # Output Power [w] - INPUT
+P_out = 1.0 * 10**3             # Output Power [w] - INPUT
 P_factor = 0.95                 # Power Factor [unitless] - INPUT
 E = 0.95                        # Efficiency [unitless] - INPUT
 pole_num = 20                   # Number of Poles - INPUT
@@ -112,7 +112,7 @@ D_out_s_min = 0.15              # Min Outer Diameter to explore in algorithm [m]
 
 ### Conversions ###
 K_gearbox_metric = .454 * K_gearbox # Conversion factor from pounds to kg
-HP_out = P_out*0.00134102           # Convert Rated Output power to horsepower [HP] - INPUT 
+HP_out = P_out*1.34102           # Convert Rated Output power to horsepower [HP] - INPUT 
 
 ### Diameter Ratios ###
 D_ratio = D_ag/D_out                                                                    # Diameter ratio to keep constant [unitless]
@@ -151,7 +151,7 @@ D_out_s_sz = np.size(D_out_s)                       # Number of Outer Diameters 
 
 ### Scaling Computations ###
 D_ag_s = D_ratio*D_out_s                                    # Compute new Airgap Diameter based on ratio [m]
-Vol_s = np.divide(P_out*60,(pi**2*S_stress*n*E*P_factor))   # Calculate D**2*L [m**3]
+Vol_s = np.divide(P_out*60 * 1000,(pi**2*S_stress*n*E*P_factor))   # Calculate D**2*L [m**3]
 
 ### Ranges of Viable Design Space ###
 
@@ -219,7 +219,7 @@ class Computational_Weight(Group):
         ### set up inputs
         indeps = self.add_subsystem("indeps", IndepVarComp())
         indeps.add_output("Motor_Density", Motor_Density, units = "kg / m**3", desc = "Volumetric Density of entire motor")
-        indeps.add_output("P_out", P_out, units = "W", desc = "Output power of motor in W")
+        indeps.add_output("P_out", P_out, units = "kW", desc = "Output power of motor in W")
         indeps.add_output("HP_out", HP_out, units = "hp", desc = "Output power of motor in HP")
         indeps.add_output("S_stress", S_stress, units = "Pa", desc = "Magnetic shear stress of motor")
         indeps.add_output("P_factor", P_factor, desc = "Power factor of motor")
