@@ -141,9 +141,11 @@ if __name__ == "__main__":
     ##################################################################################### User Inputs ######################################################################################################
     
     keywords = ["Axial", "Aero", "OutRunner", "LiquidCool"] # user input specifies what keyword to use. Must be a list, even if there is only one keyword
-    power = 100 # user input specifies the desired power in units of kW
+    keywords = ["Development"] # user input specifies what keyword to use. Must be a list, even if there is only one keyword
+
+    power = 545 #100 # user input specifies the desired power in units of kW
     plot = True # user specifies if they want a plot of their regression
-    show_motors = True  # user specifies if they want the names of the motors displayed on the regression plot
+    show_motors = False  # user specifies if they want the names of the motors displayed on the regression plot
     
     #################################################################################### OpenMDAO model ####################################################################################################
     model = Group()
@@ -159,7 +161,7 @@ if __name__ == "__main__":
     # prob.check_partials(compact_print = False, method = "cs")
     prob.run_model()
 
-    print("For a power of %s kW, the motor will weight %s kg" %(power, prob["regression.fitted_weight"]))
+    print("For a power of %s kW, the motor will weigh %s kg, power density: %s" %(power, prob["regression.fitted_weight"],power/prob["regression.fitted_weight"]))
 
     ########################################################################################## Plots #######################################################################################################
     if plot == True:
