@@ -5,7 +5,7 @@ from gearbox_weight_component import Gearbox_Weight
 from computational_sizing_component import Objective_Weight
 
 ### Below is a list of the valid keywords for the motor
-# words = ['Aero', 'Auto', 'OutRunner',  'InRunner',  'Dual', 'Axial',      'Radial', 'AirCool',    'LiquidCool', 'Development','Commercial', 'BMW',
+# ['Aero', 'Auto', 'OutRunner',  'InRunner',  'Dual', 'Axial',      'Radial', 'AirCool',    'LiquidCool', 'Development','Commercial', 'BMW',
 # 'Brusa','Emrax','Joby','Launchpoint','Magicall','MagniX','Magnax','McLaren','NeuMotor','Rotex','Siemens','ThinGap','UQM','YASA']
 
 ### The two acceptable strings for algorithm type are: "computation" and "regression"
@@ -18,7 +18,7 @@ class Weight(Group):
         self.options.declare("max_trq", default = 0, desc = "Maximum limit on torque for optimizer if running computational algorithm")
         self.options.declare("min_RPM", default = 1000, desc = "Minimum limit on optimizer if running computational algorithm")
         self.options.declare("min_trq", default = 0, desc = "Minimum limit on torque for optimizer if running computational algorithm")
-        self.options.declare("keywords", default = reg.keywords, types = list, desc = "Keywords to use in regression calculation")
+        self.options.declare("keywords", default = comp.keywords, types = list, desc = "Keywords to use in regression calculation")
 
     def setup(self):
         ### perform basic calculations and variable initializations
@@ -76,7 +76,7 @@ class Weight(Group):
 
 
 prob = Problem()
-prob.model = Weight(algorithm = "computation", power = 1000)
+prob.model = Weight(algorithm = "regression", power = 500)
 prob.setup()
 
 if prob.model.options["algorithm"] == "regression":

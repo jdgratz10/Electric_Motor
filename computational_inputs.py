@@ -1,5 +1,9 @@
 from math import pi
-### The following provide the necessary inputs for the calculation of motor and gearbox weight in their explicit components
+
+### The following is the keywords input to the regression model for motor weight calculation
+keywords = ["Axial", "Aero", "OutRunner", "LiquidCool"] # user input specifies what keyword to use. Must be a list, even if there is only one keyword
+
+### The following is the necessary inputs for motor weight calculation in the computational model
 
 ### Constant Values ###
 
