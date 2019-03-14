@@ -1,7 +1,7 @@
 from openmdao.api import ExplicitComponent
 from math import pi
 
-class Objective_Weight(ExplicitComponent):
+class MotorGearboxWeight(ExplicitComponent):
 
     def setup(self):
         self.add_input("Motor_Density", units = "kg / m**3", desc = "Volumetric Density of entire motor")
@@ -48,7 +48,7 @@ class Objective_Weight(ExplicitComponent):
         
         J["wt", "motor_speed"] = -rho * (pi / 4) * 60 * P_out * 1000 / (pi**2 * S_stress * P_factor * motor_speed**2) + K_gearbox * HP_out**.76 * .13 / (R_RPM**.89 * motor_speed**.87)
         J["wt", "Motor_Density"] = pi / 4 * 60 * P_out * 1000 / (pi**2 * S_stress * P_factor * motor_speed)
-        J["wt", "P_out"] = rho * (pi / 4) * 60 / (pi**2 * S_stress * P_factor * motor_speed)
+        J["wt", "P_out"] = rho * 1000 * (pi / 4) * 60 / (pi**2 * S_stress * P_factor * motor_speed)
         J["wt", "HP_out"] = .76 * K_gearbox * HP_out**(-.24) * motor_speed**.13 / (R_RPM**.89)
         J["wt", "S_stress"] = -rho * (pi / 4) * 60 * P_out * 1000 / (pi**2 * S_stress**2 * P_factor * motor_speed)
         J["wt", "P_factor"] = -rho * (pi / 4) * 60 * P_out * 1000 / (pi**2 * S_stress * P_factor**2 * motor_speed)

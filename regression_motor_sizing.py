@@ -149,7 +149,7 @@ class Regression(ExplicitComponent): # This component calculates a linear regres
         outputs["wt"] = np.add(np.multiply(self.coefficients[0], inputs["power"]), self.coefficients[1])
         outputs["regression_weights"] = np.add(np.multiply(self.coefficients[0], self.raw_power), self.coefficients[1])
 
-class Regression_Weight(Group):
+class RegressionMotorWeight(Group):
 
     def setup(self):
         ### set up inputs
@@ -165,7 +165,7 @@ if __name__ == "__main__":
 #################################################################################### OpenMDAO instantiation ####################################################################################################
 
     prob = Problem()
-    prob.model = Regression_Weight()
+    prob.model = RegressionMotorWeight()
     prob.setup()
     # prob.setup(force_alloc_complex = True)
     # prob.check_partials(compact_print = False, method = "cs")
