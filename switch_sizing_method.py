@@ -66,7 +66,7 @@ class Weight(Group):
             ### set up inputs
             indeps = self.add_subsystem("indeps", IndepVarComp())
             indeps.add_output("Motor_Density", input_file.Motor_Density, units = "kg / m**3", desc = "Volumetric Density of entire motor")
-            indeps.add_output("P_out", self.options["power"], units = "kW", desc = "Output power of motor in W")
+            indeps.add_output("power", self.options["power"], units = "kW", desc = "Output power of motor in W")
             indeps.add_output("HP_out", horsepower, units = "hp", desc = "Output power of motor in HP")
             indeps.add_output("S_stress", input_file.S_stress, units = "Pa", desc = "Magnetic shear stress of motor")
             indeps.add_output("P_factor", input_file.P_factor, desc = "Power factor of motor")
@@ -77,7 +77,7 @@ class Weight(Group):
             ### create connections
             self.add_subsystem("computation", MotorGearboxWeight())
             self.connect("indeps.Motor_Density", "computation.Motor_Density")
-            self.connect("indeps.P_out", "computation.P_out")
+            self.connect("indeps.power", "computation.P_out")
             self.connect("indeps.HP_out", "computation.HP_out")
             self.connect("indeps.S_stress", "computation.S_stress")
             self.connect("indeps.P_factor", "computation.P_factor")
@@ -89,6 +89,16 @@ class Weight(Group):
 
 
 ### Test Functions ### 
+def test_motor_weight_reg():
+    prob = Problem()
+    prob.model = Weight()
+
+    prob.setup(check = False, force_alloc_complex = True)
+
+    prob.run_model()
+
+    return(prob)
+
 def test_motor_weight_comp():
     prob = Problem()
     prob.model = Weight(algorithm = "computation")
@@ -108,13 +118,17 @@ def test_motor_weight_comp():
 
     return(prob)
 
-def test_motor_weight_reg():
-    prob = Problem()
-    prob.model = Weight()
 
-    prob.setup(check = False, force_alloc_complex = True)
+if __name__ == "__main__":
 
-    prob.run_model()
+    prob1 = test_motor_weight_reg()
 
-    return(prob)
+    prob1.check_partials(compact_print = True, method = "cs")
+    print("\nThe algorithm type is: %s" %prob1.model.options["algorithm"])
+    print("For a power of %s kW at an RPM of %s, the motor and gearbox will weigh %s kg\n" %(prob1["indeps.power"], prob1["indeps.motor_speed"], prob1["regression.wt"] + prob1["gearbox.wt"]))
 
+    prob2 = test_motor_weight_comp()
+
+    prob2.check_partials(compact_print = True, method = "cs")
+    print("\nThe algorithm type is: %s" %prob2.model.options["algorithm"])
+    print("For a power of %s kW at an RPM of %s, the motor and gearbox will weigh %s kg\n" %(prob2["indeps.power"], prob2["indeps.motor_speed"], prob2["computation.wt"]))

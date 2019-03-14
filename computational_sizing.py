@@ -42,7 +42,7 @@ from math import pi
 import numpy as np
 import matplotlib.pyplot as plt
 from openmdao.api import Problem, Group, IndepVarComp, ScipyOptimizeDriver
-from computational_sizing_component import Objective_Weight
+from computational_sizing_component import MotorGearboxWeight
 
 ### Inputs #################################################################################################################################################################################################
 
@@ -213,7 +213,7 @@ E_RPM = n                                                         # 'Motor RPM' 
 R_RPM = np.ones((n_sz, 1))*Fan_RPM                                # 'Rotor RPM' in Krantz Formula - This is the slower speed input to gearbox [RPM]
 
 ### Optimization ###########################################################################################################################################################################################
-class Computational_Weight(Group):
+class ComputationalWeight(Group):
 
     def setup(self):
         ### set up inputs
@@ -229,7 +229,7 @@ class Computational_Weight(Group):
         indeps.add_output("motor_speed", 15 * 10**3, units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
 
         ### create connections
-        self.add_subsystem("combined_weight", Objective_Weight())
+        self.add_subsystem("combined_weight", MotorGearboxWeight())
         self.connect("indeps.Motor_Density", "combined_weight.Motor_Density")
         self.connect("indeps.P_out", "combined_weight.P_out")
         self.connect("indeps.HP_out", "combined_weight.HP_out")
@@ -243,7 +243,7 @@ if __name__ == "__main__":
 
 ### OpenMDAO model #########################################################################################################################################################################################
     prob = Problem()
-    prob.model = Computational_Weight()
+    prob.model = ComputationalWeight()
     prob.model.add_design_var("indeps.motor_speed", lower = n_min * 10**3, upper = n_max * 10**3)
     prob.model.add_objective("combined_weight.wt")
     
