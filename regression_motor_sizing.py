@@ -34,7 +34,7 @@ from openmdao.api import Problem, Group, IndepVarComp, ExplicitComponent
 # 'Brusa','Emrax','Joby','Launchpoint','Magicall','MagniX','Magnax','McLaren','NeuMotor','Rotex','Siemens','ThinGap','UQM','YASA']
     
 keywords = ["Axial", "Aero", "OutRunner", "LiquidCool"] # user input specifies what keyword to use. Must be a list, even if there is only one keyword
-power = 1000. #power = 545.# user input specifies the desired power in units of kW
+power = 500. #power = 545.# user input specifies the desired power in units of kW
 plot = True # user specifies if they want a plot of their regression
 show_motors = True  # user specifies if they want the names of the motors displayed on the regression plot
 
@@ -184,15 +184,15 @@ if __name__ == "__main__":
     
 ########################################################################################## OpenMDAO instantiation ##########################################################################################
 
-    prob1 = test_regression_motor_weight()
+    prob1 = test_regression_component()
     
     prob1.check_partials(compact_print = True, method = "cs")
-    print("For a power of %s kW, the motor will weigh %s kg" %(prob1["power"], prob1["regression.wt"]))
+    print("For a power of %s kW, the motor will weigh %s kg" %(prob1["power"], prob1["wt"]))
 
-    prob2 = test_regression_component()
+    prob2 = test_regression_motor_weight()
     
     prob2.check_partials(compact_print = True, method = "cs")
-    print("For a power of %s kW, the motor will weigh %s kg" %(prob2["power"], prob2["wt"]))
+    print("For a power of %s kW, the motor will weigh %s kg" %(prob2["power"], prob2["regression.wt"]))
 
 ################################################################################################### Plots ##################################################################################################
     if plot == True:
@@ -201,11 +201,11 @@ if __name__ == "__main__":
         data_weight = data[1]
         motor_names = data[2]
         plt.plot(data_power, data_weight, "o")
-        plt.plot(power, prob1["regression.wt"], marker = "o", color = "red")
-        plt.plot(data_power, prob1["regression.regression_weights"])
+        plt.plot(power, prob2["regression.wt"], marker = "o", color = "red")
+        plt.plot(data_power, prob2["regression.regression_weights"])
         if show_motors == True:
             for i in np.arange(0, len(motor_names), 1):
-                plt.annotate("%s" % motor_names[i], xy = (data_power[i], prob1["regression.regression_weights"][i]), textcoords = "data")
+                plt.annotate("%s" % motor_names[i], xy = (data_power[i], prob2["regression.regression_weights"][i]), textcoords = "data")
 
         plt.title(f"Motor Keywords: '{keywords}'")
         plt.xlabel("Power (kW)")

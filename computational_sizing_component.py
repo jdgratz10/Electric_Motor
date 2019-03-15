@@ -5,13 +5,13 @@ class MotorGearboxWeight(ExplicitComponent):
 
     def setup(self):
         self.add_input("Motor_Density", val = 3279.626, units = "kg / m**3", desc = "Volumetric Density of entire motor")
-        self.add_input("P_out", val = 500, units = "kW", desc = "Output power of motor")
-        self.add_input("HP_out", val = 670.511044, units = "hp", desc = "Output power of motor in HP")
+        self.add_input("P_out", val = 1000, units = "kW", desc = "Output power of motor")
+        self.add_input("HP_out", val = 1341.02, units = "hp", desc = "Output power of motor in HP")
         self.add_input("S_stress", val = 24.1 * 10**3, units = "Pa", desc = "Magnetic shear stress of motor")
         self.add_input("P_factor", val = .95, desc = "Power factor of motor")
         self.add_input("K_gearbox_metric", val = 32.688, desc = "Technology level of gearbox")
         self.add_input("R_RPM", val = 4000, units = "rpm", desc = "Rotor RPM, slower gearbox speed")
-        self.add_input("motor_speed", val = 20000, units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
+        self.add_input("motor_speed", val = 21000, units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
 
         self.add_output("wt", desc = "weight of motor and gearbox")
 
