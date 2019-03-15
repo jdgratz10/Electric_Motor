@@ -130,7 +130,7 @@ def filter_data(keywords): # This function extracts the motor weight, motor powe
 class Regression(ExplicitComponent): # This component calculates a linear regression and its derivatives for the power and weight of the desired motors.
 
     def initialize(self):
-        self.options.declare("keywords", types = list, desc = "keywords to use in component")
+        self.options.declare("keywords", default = ["Axial"], types = list, desc = "keywords to use in component")
 
     def setup(self):
         data = filter_data(self.options["keywords"])
@@ -139,7 +139,7 @@ class Regression(ExplicitComponent): # This component calculates a linear regres
           
         self.coefficients = np.polyfit(self.raw_power, raw_weight, 1)    # coefficients of the linear regression line.  [0] is the slope, and [1] is the y-intercept
 
-        self.add_input("power", units = "kW", desc = "power of the motor") 
+        self.add_input("power", val = 500, units = "kW", desc = "power of the motor") 
         self.add_output("wt", units = "kg", desc = "outputted weight of motor")   
         self.add_output("regression_weights", shape = np.shape(self.raw_power), units = "kg", desc = "corresponding fitted weights for regression plot, no actual bearing on model, but used for visual aid")
 
@@ -153,38 +153,59 @@ class RegressionMotorWeight(Group):
 
     def setup(self):
         ### set up inputs
-        indeps = self.add_subsystem("indeps", IndepVarComp())
+        indeps = self.add_subsystem("indeps", IndepVarComp(), promotes = ["*"])
         indeps.add_output("power", power, units = "kW", desc = "power of the motor")
-        self.add_subsystem("regression", Regression(keywords = keywords))
+        self.add_subsystem("regression", Regression(keywords = keywords), promotes_inputs = ["power"])
 
-        ### create connections
-        self.connect("indeps.power", "regression.power")
+############################################################################################### Test Function ##############################################################################################
+def test_regression_component():
+    prob = Problem()
+    prob.model = Regression()
+
+    prob.setup(check = False, force_alloc_complex = True)
+
+    prob.run_model()
+
+    return(prob)
+
+
+def test_regression_motor_weight():
+    prob = Problem()
+    prob.model = RegressionMotorWeight()
+    
+    prob.setup(check = False, force_alloc_complex = True)
+
+    prob.run_model()
+
+    return(prob)
+
 
 if __name__ == "__main__":
     
-#################################################################################### OpenMDAO instantiation ####################################################################################################
+########################################################################################## OpenMDAO instantiation ##########################################################################################
 
-    prob = Problem()
-    prob.model = RegressionMotorWeight()
-    prob.setup()
-    # prob.setup(force_alloc_complex = True)
-    # prob.check_partials(compact_print = False, method = "cs")
-    prob.run_model()
+    prob1 = test_regression_motor_weight()
+    
+    prob1.check_partials(compact_print = True, method = "cs")
+    print("For a power of %s kW, the motor will weigh %s kg" %(prob1["power"], prob1["regression.wt"]))
 
-    print("For a power of %s kW, the motor will weigh %s kg" %(prob["indeps.power"], prob["regression.wt"]))
+    prob2 = test_regression_component()
+    
+    prob2.check_partials(compact_print = True, method = "cs")
+    print("For a power of %s kW, the motor will weigh %s kg" %(prob2["power"], prob2["wt"]))
 
-########################################################################################## Plots #######################################################################################################
+################################################################################################### Plots ##################################################################################################
     if plot == True:
         data = filter_data(keywords)
         data_power = data[0]
         data_weight = data[1]
         motor_names = data[2]
         plt.plot(data_power, data_weight, "o")
-        plt.plot(power, prob["regression.wt"], marker = "o", color = "red")
-        plt.plot(data_power, prob["regression.regression_weights"])
+        plt.plot(power, prob1["regression.wt"], marker = "o", color = "red")
+        plt.plot(data_power, prob1["regression.regression_weights"])
         if show_motors == True:
             for i in np.arange(0, len(motor_names), 1):
-                plt.annotate("%s" % motor_names[i], xy = (data_power[i], prob["regression.regression_weights"][i]), textcoords = "data")
+                plt.annotate("%s" % motor_names[i], xy = (data_power[i], prob1["regression.regression_weights"][i]), textcoords = "data")
 
         plt.title(f"Motor Keywords: '{keywords}'")
         plt.xlabel("Power (kW)")

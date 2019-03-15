@@ -29,20 +29,16 @@ class Weight(Group):
         horsepower = self.options["power"] * 1.34102  
         if self.options["algorithm"] == "regression":
             ### set up inputs
-            indeps = self.add_subsystem("indeps", IndepVarComp())
+            indeps = self.add_subsystem("indeps", IndepVarComp(), promotes = ["*"])
             indeps.add_output("power", self.options["power"], units = "kW", desc = "Output power of the motor")
             indeps.add_output("HP_out", horsepower, units = "hp", desc = "Outpt power of the motor in HP")
             indeps.add_output("K_gearbox_metric", input_file.K_gearbox_metric, desc = "Technology level of gearbox")
             indeps.add_output("prop_RPM", input_file.prop_RPM, units = "rpm", desc = "Propeller RPM, slower gearbox speed")
             indeps. add_output("motor_speed", self.options["max_RPM"], units = "rpm", desc = "Motor speed")
             ### create connections
-            self.add_subsystem("regression", Regression(keywords = self.options["keywords"]))
-            self.add_subsystem("gearbox", GearboxWeight())
-            self.connect("indeps.power", "regression.power")
-            self.connect("indeps.HP_out", "gearbox.HP_out")
-            self.connect("indeps.K_gearbox_metric", "gearbox.K_gearbox_metric")
-            self.connect("indeps.prop_RPM", "gearbox.R_RPM")
-            self.connect("indeps.motor_speed", "gearbox.motor_speed")
+            self.add_subsystem("regression", Regression(keywords = self.options["keywords"]), promotes_inputs = ["power"])
+            self.add_subsystem("gearbox", GearboxWeight(), promotes_inputs = ["HP_out", "K_gearbox_metric", "motor_speed"])
+            self.connect("prop_RPM", "gearbox.R_RPM")
 
         elif self.options["algorithm"] == "computation": 
             wrn("Caution: The computational method used for motor weight estimation is inaccurate", Warning)
@@ -64,7 +60,7 @@ class Weight(Group):
                 raise Exception("The minimum RPM is greater than the maximum RPM")
             
             ### set up inputs
-            indeps = self.add_subsystem("indeps", IndepVarComp())
+            indeps = self.add_subsystem("indeps", IndepVarComp(), promotes = ["*"])
             indeps.add_output("Motor_Density", input_file.Motor_Density, units = "kg / m**3", desc = "Volumetric Density of entire motor")
             indeps.add_output("power", self.options["power"], units = "kW", desc = "Output power of motor in W")
             indeps.add_output("HP_out", horsepower, units = "hp", desc = "Output power of motor in HP")
@@ -75,15 +71,9 @@ class Weight(Group):
             indeps.add_output("motor_speed", self.options["max_RPM"], units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
             
             ### create connections
-            self.add_subsystem("computation", MotorGearboxWeight())
-            self.connect("indeps.Motor_Density", "computation.Motor_Density")
-            self.connect("indeps.power", "computation.P_out")
-            self.connect("indeps.HP_out", "computation.HP_out")
-            self.connect("indeps.S_stress", "computation.S_stress")
-            self.connect("indeps.P_factor", "computation.P_factor")
-            self.connect("indeps.K_gearbox_metric", "computation.K_gearbox_metric")
-            self.connect("indeps.prop_RPM", "computation.R_RPM")
-            self.connect("indeps.motor_speed", "computation.motor_speed")
+            self.add_subsystem("computation", MotorGearboxWeight(), promotes_inputs=["HP_out", "Motor_Density", "S_stress", "P_factor", "K_gearbox_metric", "motor_speed"])
+            self.connect("power", "computation.P_out")
+            self.connect("prop_RPM", "computation.R_RPM")
         else:
             raise Exception("You have specified an algorithm of %s, which does not exist" %(self.options["algorithm"]))
 
@@ -104,7 +94,7 @@ def test_motor_weight_comp():
     prob.model = Weight(algorithm = "computation")
     print("Caution: The computational method used for motor weight estimation is inaccurate")
     
-    prob.model.add_design_var("indeps.motor_speed", lower = prob.model.options["min_RPM"], upper = prob.model.options["max_RPM"])
+    prob.model.add_design_var("motor_speed", lower = prob.model.options["min_RPM"], upper = prob.model.options["max_RPM"])
     prob.model.add_objective("computation.wt")
     
     prob.driver = ScipyOptimizeDriver()
@@ -131,4 +121,4 @@ if __name__ == "__main__":
 
     prob2.check_partials(compact_print = True, method = "cs")
     print("\nThe algorithm type is: %s" %prob2.model.options["algorithm"])
-    print("For a power of %s kW at an RPM of %s, the motor and gearbox will weigh %s kg\n" %(prob2["indeps.power"], prob2["indeps.motor_speed"], prob2["computation.wt"]))
+    print("For a power of %s kW at an RPM of %s, the motor and gearbox will weigh %s kg\n" %(prob2["power"], prob2["motor_speed"], prob2["computation.wt"]))

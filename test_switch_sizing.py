@@ -3,7 +3,7 @@ from openmdao.utils.assert_utils import assert_rel_error, assert_check_partials
 
 from switch_sizing_method import test_motor_weight_reg, test_motor_weight_comp
 
-class TestMotorWeight(unittest.TestCase):
+class TestSwitchSizingMethod(unittest.TestCase):
 
     def test_reg(self):
         prob = test_motor_weight_reg()

@@ -41,7 +41,7 @@ prob2.driver.options["optimizer"] = "COBYLA"
 prob2.setup(force_alloc_complex = True)
 prob2.run_driver()
 
-power = prob2["indeps.P_out"]
+power = prob2["indeps.power"]
 total_weight = prob2["computation.wt"]
 motor_RPM = prob2["indeps.motor_speed"]
 

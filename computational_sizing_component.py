@@ -1,28 +1,21 @@
-from openmdao.api import ExplicitComponent
+from openmdao.api import ExplicitComponent, Problem
 from math import pi
 
 class MotorGearboxWeight(ExplicitComponent):
 
     def setup(self):
-        self.add_input("Motor_Density", units = "kg / m**3", desc = "Volumetric Density of entire motor")
-        self.add_input("P_out", units = "kW", desc = "Output power of motor")
-        self.add_input("HP_out", units = "hp", desc = "Output power of motor in HP")
-        self.add_input("S_stress", units = "Pa", desc = "Magnetic shear stress of motor")
-        self.add_input("P_factor", desc = "Power factor of motor")
-        self.add_input("K_gearbox_metric", desc = "Technology level of gearbox")
-        self.add_input("R_RPM", units = "rpm", desc = "Rotor RPM, slower gearbox speed")
-        self.add_input("motor_speed", units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
+        self.add_input("Motor_Density", val = 3279.626, units = "kg / m**3", desc = "Volumetric Density of entire motor")
+        self.add_input("P_out", val = 500, units = "kW", desc = "Output power of motor")
+        self.add_input("HP_out", val = 670.511044, units = "hp", desc = "Output power of motor in HP")
+        self.add_input("S_stress", val = 24.1 * 10**3, units = "Pa", desc = "Magnetic shear stress of motor")
+        self.add_input("P_factor", val = .95, desc = "Power factor of motor")
+        self.add_input("K_gearbox_metric", val = 32.688, desc = "Technology level of gearbox")
+        self.add_input("R_RPM", val = 4000, units = "rpm", desc = "Rotor RPM, slower gearbox speed")
+        self.add_input("motor_speed", val = 20000, units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
 
         self.add_output("wt", desc = "weight of motor and gearbox")
 
-        self.declare_partials("wt", "motor_speed")
-        self.declare_partials("wt", "Motor_Density")
-        self.declare_partials("wt", "P_out")
-        self.declare_partials("wt", "HP_out")
-        self.declare_partials("wt", "S_stress")
-        self.declare_partials("wt", "P_factor")
-        self.declare_partials("wt", "K_gearbox_metric")
-        self.declare_partials("wt", "R_RPM")
+        self.declare_partials("wt", ["motor_speed", "Motor_Density", "P_out", "HP_out", "S_stress", "P_factor", "K_gearbox_metric", "R_RPM"])
 
     def compute(self, inputs, outputs):
         rho = inputs["Motor_Density"]
@@ -54,3 +47,20 @@ class MotorGearboxWeight(ExplicitComponent):
         J["wt", "P_factor"] = -rho * (pi / 4) * 60 * P_out * 1000 / (pi**2 * S_stress * P_factor**2 * motor_speed)
         J["wt", "K_gearbox_metric"] = HP_out**.76 * motor_speed**.13 / (R_RPM**.89)
         J["wt", "R_RPM"] = -.89 * K_gearbox * HP_out**.76 * motor_speed**.13 / (R_RPM**1.89)
+
+def test_motor_gearbox_weight():
+    prob = Problem()
+    prob.model = MotorGearboxWeight()
+
+    prob.setup(check = False, force_alloc_complex = True)
+
+    prob.run_model()
+
+    return(prob)
+
+if __name__ == "__main__":
+
+    prob = test_motor_gearbox_weight()
+    
+    prob.check_partials(compact_print = True, method = "cs")
+    print(prob["wt"])
