@@ -19,19 +19,19 @@ prob1.run_model()
 
 power = prob1["indeps.power"]
 total_weight = prob1["regression.wt"] + prob1["gearbox.wt"]
-motor_RPM = prob1["indeps.motor_speed"]
+motor_RPM = prob1["motor_speed"]
 
 print("\nThe algorithm type is: %s" %prob1.model.options["algorithm"])
 print("For a power of %s kW at an RPM of %s, the motor and gearbox will weigh %s kg\n" %(power, motor_RPM, total_weight))
 
 
 ### Example with computation algorithm (this algorithm not recommended, results are questionable) ###
-print("Caution: The computational method used for motor weight estimation is inaccurate")
+print("Caution: The computational method used for motor weight estimation is still a work in progress and currently innacurate")
     
 prob2 = Problem()
 prob2.model = Weight(algorithm = "computation")
 
-prob2.model.add_design_var("indeps.motor_speed", lower = prob2.model.options["min_RPM"], upper = prob2.model.options["max_RPM"])
+prob2.model.add_design_var("motor_speed", lower = prob2.model.options["min_RPM"], upper = prob2.model.options["max_RPM"])
 prob2.model.add_objective("computation.wt")
     
 prob2.driver = ScipyOptimizeDriver()
@@ -43,7 +43,7 @@ prob2.run_driver()
 
 power = prob2["indeps.power"]
 total_weight = prob2["computation.wt"]
-motor_RPM = prob2["indeps.motor_speed"]
+motor_RPM = prob2["motor_speed"]
 
 print("\nThe algorithm type is: %s" %prob2.model.options["algorithm"])
 print("For a power of %s kW at an RPM of %s, the motor and gearbox will weigh %s kg\n" %(power, motor_RPM, total_weight))
