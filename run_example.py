@@ -1,5 +1,5 @@
 from openmdao.api import Problem, ScipyOptimizeDriver
-from switch_sizing_method import Weight
+from switch_sizing_method import MotorGearbox
 
 ### The options for the group "Weight" are:
     #1) algorithm - default = "regression" (this tells the group which algorithms to use.  The options are "regression" and "computation" (unreliable))
@@ -12,27 +12,27 @@ from switch_sizing_method import Weight
 
 ### Example with regression algorithm ###
 prob1 = Problem()
-prob1.model = Weight()
+prob1.model = MotorGearbox()
     
 prob1.setup(force_alloc_complex = True)
 prob1.run_model()
 
-power = prob1["indeps.power"]
-total_weight = prob1["regression.wt"] + prob1["gearbox.wt"]
-motor_RPM = prob1["indeps.motor_speed"]
+power = prob1["power"]
+total_weight = prob1["motor.wt"] + prob1["gearbox.wt"]
+motor_RPM = prob1["motor_speed"]
 
 print("\nThe algorithm type is: %s" %prob1.model.options["algorithm"])
 print("For a power of %s kW at an RPM of %s, the motor and gearbox will weigh %s kg\n" %(power, motor_RPM, total_weight))
 
 
 ### Example with computation algorithm (this algorithm not recommended, results are questionable) ###
-print("Caution: The computational method used for motor weight estimation is inaccurate")
+print("Caution: The computational method used for motor weight estimation is still a work in progress and currently innacurate")
     
 prob2 = Problem()
-prob2.model = Weight(algorithm = "computation")
+prob2.model = MotorGearbox(algorithm = "computation")
 
-prob2.model.add_design_var("indeps.motor_speed", lower = prob2.model.options["min_RPM"], upper = prob2.model.options["max_RPM"])
-prob2.model.add_objective("computation.wt")
+prob2.model.add_design_var("motor_speed", lower = prob2.model.options["min_RPM"], upper = prob2.model.options["max_RPM"])
+prob2.model.add_objective("combined_motor_gb.wt")
     
 prob2.driver = ScipyOptimizeDriver()
 prob2.driver.options["maxiter"] = 20000
@@ -41,9 +41,9 @@ prob2.driver.options["optimizer"] = "COBYLA"
 prob2.setup(force_alloc_complex = True)
 prob2.run_driver()
 
-power = prob2["indeps.power"]
-total_weight = prob2["computation.wt"]
-motor_RPM = prob2["indeps.motor_speed"]
+power = prob2["power"]
+total_weight = prob2["combined_motor_gb.wt"]
+motor_RPM = prob2["motor_speed"]
 
 print("\nThe algorithm type is: %s" %prob2.model.options["algorithm"])
 print("For a power of %s kW at an RPM of %s, the motor and gearbox will weigh %s kg\n" %(power, motor_RPM, total_weight))

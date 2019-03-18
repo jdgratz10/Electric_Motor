@@ -4,6 +4,7 @@ from regression_motor_sizing import Regression
 import input_file 
 from gearbox_weight_component import GearboxWeight
 from computational_sizing_component import MotorGearboxWeight
+from num_motors_component import NumMotors
 
 ### Below is a list of the valid keywords for the motor
 # ['Aero', 'Auto', 'OutRunner',  'InRunner',  'Dual', 'Axial',      'Radial', 'AirCool',    'LiquidCool', 'Development','Commercial', 'BMW',
@@ -13,7 +14,7 @@ from computational_sizing_component import MotorGearboxWeight
 
 
 ### Top level group to switch between algorithms ###
-class Weight(Group):
+class MotorGearbox(Group):
 
     def initialize(self):
         self.options.declare("algorithm", default = "regression", desc = "Tells the group which algorithm to execute")
@@ -34,11 +35,14 @@ class Weight(Group):
             indeps.add_output("HP_out", horsepower, units = "hp", desc = "Outpt power of the motor in HP")
             indeps.add_output("K_gearbox_metric", input_file.K_gearbox_metric, desc = "Technology level of gearbox")
             indeps.add_output("prop_RPM", input_file.prop_RPM, units = "rpm", desc = "Propeller RPM, slower gearbox speed")
-            indeps. add_output("motor_speed", self.options["max_RPM"], units = "rpm", desc = "Motor speed")
+            indeps.add_output("motor_speed", self.options["max_RPM"], units = "rpm", desc = "Motor speed")
             ### create connections
-            self.add_subsystem("regression", Regression(keywords = self.options["keywords"]), promotes_inputs = ["power"])
+            self.add_subsystem("motor", Regression(keywords = self.options["keywords"]), promotes_inputs = ["power"])
             self.add_subsystem("gearbox", GearboxWeight(), promotes_inputs = ["HP_out", "K_gearbox_metric", "motor_speed"])
+            self.add_subsystem("multiply", NumMotors(motors = 4), promotes_outputs = ["W_motor_gearbox"])
             self.connect("prop_RPM", "gearbox.R_RPM")
+            self.connect("motor.wt", "multiply.motor_wt")
+            self.connect("gearbox.wt", "multiply.gb_wt")
 
         elif self.options["algorithm"] == "computation": 
             wrn("Caution: The computational method used for motor weight estimation is inaccurate", Warning)
@@ -71,9 +75,11 @@ class Weight(Group):
             indeps.add_output("motor_speed", self.options["max_RPM"], units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
             
             ### create connections
-            self.add_subsystem("computation", MotorGearboxWeight(), promotes_inputs=["HP_out", "Motor_Density", "S_stress", "P_factor", "K_gearbox_metric", "motor_speed"])
-            self.connect("power", "computation.P_out")
-            self.connect("prop_RPM", "computation.R_RPM")
+            self.add_subsystem("combined_motor_gb", MotorGearboxWeight(), promotes_inputs=["HP_out", "Motor_Density", "S_stress", "P_factor", "K_gearbox_metric", "motor_speed"])
+            self.add_subsystem("multiply", NumMotors(motors = 4, algorithm = "computation"), promotes_outputs = ["W_motor_gearbox"])
+            self.connect("power", "combined_motor_gb.P_out")
+            self.connect("prop_RPM", "combined_motor_gb.R_RPM")
+            self.connect("combined_motor_gb.wt", "multiply.combined_wt")
         else:
             raise Exception("You have specified an algorithm of %s, which does not exist" %(self.options["algorithm"]))
 
@@ -81,7 +87,7 @@ class Weight(Group):
 ### Test Functions ### 
 def test_motor_weight_reg():
     prob = Problem()
-    prob.model = Weight()
+    prob.model = MotorGearbox()
 
     prob.setup(check = False, force_alloc_complex = True)
 
@@ -91,11 +97,11 @@ def test_motor_weight_reg():
 
 def test_motor_weight_comp():
     prob = Problem()
-    prob.model = Weight(algorithm = "computation")
+    prob.model = MotorGearbox(algorithm = "computation")
     print("Caution: The computational method used for motor weight estimation is inaccurate")
     
     prob.model.add_design_var("motor_speed", lower = prob.model.options["min_RPM"], upper = prob.model.options["max_RPM"])
-    prob.model.add_objective("computation.wt")
+    prob.model.add_objective("combined_motor_gb.wt")
     
     prob.driver = ScipyOptimizeDriver()
     prob.driver.options["maxiter"] = 20000
@@ -115,10 +121,10 @@ if __name__ == "__main__":
 
     prob1.check_partials(compact_print = True, method = "cs")
     print("\nThe algorithm type is: %s" %prob1.model.options["algorithm"])
-    print("For a power of %s kW at an RPM of %s, the motor and gearbox will weigh %s kg\n" %(prob1["indeps.power"], prob1["indeps.motor_speed"], prob1["regression.wt"] + prob1["gearbox.wt"]))
+    print("For a power of %s kW at an RPM of %s, the motor and gearbox will weigh %s kg\n" %(prob1["indeps.power"], prob1["indeps.motor_speed"], prob1["W_motor_gearbox"]))
 
     prob2 = test_motor_weight_comp()
 
     prob2.check_partials(compact_print = True, method = "cs")
     print("\nThe algorithm type is: %s" %prob2.model.options["algorithm"])
-    print("For a power of %s kW at an RPM of %s, the motor and gearbox will weigh %s kg\n" %(prob2["power"], prob2["motor_speed"], prob2["computation.wt"]))
+    print("For a power of %s kW at an RPM of %s, the motor and gearbox will weigh %s kg\n" %(prob2["power"], prob2["motor_speed"], prob2["W_motor_gearbox"]))
