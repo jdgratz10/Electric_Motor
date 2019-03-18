@@ -1,5 +1,6 @@
 from openmdao.api import Problem, ScipyOptimizeDriver
 from switch_sizing_method import MotorGearbox
+from warnings import warn as wrn
 
 ### The options for the group "Weight" are:
     #1) algorithm - default = "regression" (this tells the group which algorithms to use.  The options are "regression" and "computation" (unreliable))
@@ -26,7 +27,6 @@ print("For a power of %s kW at an RPM of %s, the motor and gearbox will weigh %s
 
 
 ### Example with computation algorithm (this algorithm not recommended, results are questionable) ###
-print("Caution: The computational method used for motor weight estimation is still a work in progress and currently innacurate")
     
 prob2 = Problem()
 prob2.model = MotorGearbox(algorithm = "computation")

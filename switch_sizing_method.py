@@ -35,7 +35,7 @@ class MotorGearbox(Group):
             indeps.add_output("HP_out", horsepower, units = "hp", desc = "Outpt power of the motor in HP")
             indeps.add_output("K_gearbox_metric", input_file.K_gearbox_metric, desc = "Technology level of gearbox")
             indeps.add_output("prop_RPM", input_file.prop_RPM, units = "rpm", desc = "Propeller RPM, slower gearbox speed")
-            indeps.add_output("motor_speed", self.options["max_RPM"], units = "rpm", desc = "Motor speed")
+            indeps. add_output("motor_speed", self.options["max_RPM"], units = "rpm", desc = "Motor speed")
             ### create connections
             self.add_subsystem("motor", Regression(keywords = self.options["keywords"]), promotes_inputs = ["power"])
             self.add_subsystem("gearbox", GearboxWeight(), promotes_inputs = ["HP_out", "K_gearbox_metric", "motor_speed"])
@@ -45,7 +45,7 @@ class MotorGearbox(Group):
             self.connect("gearbox.wt", "multiply.gb_wt")
 
         elif self.options["algorithm"] == "computation": 
-            wrn("Caution: The computational method used for motor weight estimation is inaccurate", Warning)
+            wrn("The computational method used for motor weight estimation is still a work in progress and currently inaccurate", Warning)
 
             ### calculate torque from RPM if torque is provided
             if self.options["max_trq"] != 0:
@@ -98,7 +98,7 @@ def test_motor_weight_reg():
 def test_motor_weight_comp():
     prob = Problem()
     prob.model = MotorGearbox(algorithm = "computation")
-    print("Caution: The computational method used for motor weight estimation is inaccurate")
+    wrn("The computational method used for motor weight estimation is still a work in progress and currently inaccurate", Warning)
     
     prob.model.add_design_var("motor_speed", lower = prob.model.options["min_RPM"], upper = prob.model.options["max_RPM"])
     prob.model.add_objective("combined_motor_gb.wt")
