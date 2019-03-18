@@ -34,7 +34,7 @@ class Weight(Group):
             indeps.add_output("HP_out", horsepower, units = "hp", desc = "Outpt power of the motor in HP")
             indeps.add_output("K_gearbox_metric", input_file.K_gearbox_metric, desc = "Technology level of gearbox")
             indeps.add_output("prop_RPM", input_file.prop_RPM, units = "rpm", desc = "Propeller RPM, slower gearbox speed")
-            indeps. add_output("motor_speed", self.options["max_RPM"], units = "rpm", desc = "Motor speed")
+            indeps.add_output("motor_speed", self.options["max_RPM"], units = "rpm", desc = "Motor speed")
             ### create connections
             self.add_subsystem("regression", Regression(keywords = self.options["keywords"]), promotes_inputs = ["power"])
             self.add_subsystem("gearbox", GearboxWeight(), promotes_inputs = ["HP_out", "K_gearbox_metric", "motor_speed"])
