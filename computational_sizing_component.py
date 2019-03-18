@@ -13,7 +13,7 @@ class MotorGearboxWeight(ExplicitComponent):
         self.add_input("R_RPM", val = 4000, units = "rpm", desc = "Rotor RPM, slower gearbox speed")
         self.add_input("motor_speed", val = 21000, units = "rpm", desc = "Motor speed, the value that will be varied by the optimizer")
 
-        self.add_output("wt", desc = "weight of motor and gearbox")
+        self.add_output("wt", units = "kg", desc = "weight of motor and gearbox")
 
         self.declare_partials("wt", ["motor_speed", "Motor_Density", "P_out", "HP_out", "S_stress", "P_factor", "K_gearbox_metric", "R_RPM"])
 
