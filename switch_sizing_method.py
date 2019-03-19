@@ -1,7 +1,7 @@
 from openmdao.api import Problem, Group, IndepVarComp, ScipyOptimizeDriver
 from warnings import warn as wrn
 from regression_motor_sizing import Regression
-import input_file 
+import input_file as input_file
 from gearbox_weight_component import GearboxWeight
 from computational_sizing_component import MotorGearboxWeight
 from num_motors_component import NumMotors
