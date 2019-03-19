@@ -30,9 +30,13 @@ from openmdao.api import Problem, Group, IndepVarComp, ExplicitComponent
 ##################################################################################### User Inputs ######################################################################################################
 
 # the list below is all the relevant keywords
-# words = ['Aero', 'Auto', 'OutRunner',  'InRunner',  'Dual', 'Axial',      'Radial', 'AirCool',    'LiquidCool', 'Development','Commercial', 'BMW',
-# 'Brusa','Emrax','Joby','Launchpoint','Magicall','MagniX','Magnax','McLaren','NeuMotor','Rotex','Siemens','ThinGap','UQM','YASA']
-    
+# words = ['Aero', 'Auto',    'OutRunner', 'InRunner', 'Dual',    'Axial', 'Radial',    'AirCool', 'LiquidCool',    'Development','Commercial',   
+# 'BMW', 'Brusa','Emrax','Joby','Launchpoint','Magicall','MagniX','Magnax','McLaren','NeuMotor','Rotex','Siemens','ThinGap','UQM','YASA']
+
+#inputs for test:
+# keywords = ["Axial", "Aero", "OutRunner", "LiquidCool"]
+# power = 500.
+
 keywords = ["Axial", "Aero", "OutRunner", "LiquidCool"] # user input specifies what keyword to use. Must be a list, even if there is only one keyword
 power = 500. #power = 545.# user input specifies the desired power in units of kW
 plot = True # user specifies if they want a plot of their regression
