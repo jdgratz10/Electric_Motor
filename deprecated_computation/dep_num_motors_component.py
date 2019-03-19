@@ -3,7 +3,7 @@ from openmdao.api import ExplicitComponent, Problem
 class NumMotors(ExplicitComponent):
 
     def initialize(self):
-        self.options.declare("algorithm", default = "regression", desc = "Tells the component which caluclation algorithm is being used")
+        self.options.declare("algorithm", default = "regression", desc = "Tells the component which calculation algorithm is being used")
         self.options.declare("motors", default = 4, desc = "Number of motors on aircraft")
 
     def setup(self):
