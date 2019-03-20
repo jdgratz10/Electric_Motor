@@ -1,7 +1,7 @@
 from openmdao.api import ExplicitComponent, Problem
 
 class GearboxWeight(ExplicitComponent):
-    
+
     def setup(self):
         self.add_input("HP_out", val = 670.511044, units = "hp", desc = "Output power of motor")
         self.add_input("K_gearbox_metric", val = 32.688, desc = "Technology level of gearbox")    
